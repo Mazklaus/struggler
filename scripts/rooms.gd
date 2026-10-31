@@ -9,15 +9,18 @@ extends RefCounted
 ##   S  cercle de sel : repos, sauvegarde, change d'arme ; les esprits n'y entrent pas
 ##   F  brasier : repos et sauvegarde, mais il ne protège pas des esprits
 ##   1-9  passage vers une autre salle (voir "doors" : chiffre -> [salle, chiffre d'arrivée])
+##   -  échafaudage : une plateforme qu'on traverse par dessous (toujours là)
 ##   P  départ d'une nouvelle partie   R  mineur rampant   E  soldat   D  mannequin
 ##   G  point d'apparition des esprits la nuit      g  esprit présent même le jour
 ##   c  corps (décor)            B  boss de la salle (voir "boss"), absent une fois vaincu
 ##   Objets (voir ITEMS) : f ferraille, v bandage de Hautfer (+1 PV), m marteau de Gerold,
-##   l lettre d'Ilse.
+##   l lettre d'Ilse, k les pics des mineurs.
+##
+## Les salles de Hautfer sont dans rooms_hautfer.gd (généré par tools/gen_hautfer.py).
 ##
 ## "hints" : panneaux d'aide posés dans la salle, [colonne, ligne, texte].
 
-const START_ROOM := "z1_effondrement"
+const START_ROOM := "h01_effondrement"
 const TEST_ROOM := "essai"
 
 ## Objets ramassables : ce qu'ils donnent et le texte affiché.
@@ -27,11 +30,13 @@ const ITEMS := {
 		"text": "Une bande de lin brodée d'un H. Ilse en cousait pour les mineurs.\n\n+1 point de vie maximum."},
 	"m": {"type": "capacite", "id": "lourde", "title": "Le marteau de Gerold",
 		"text": "Le marteau de ton père, encore posé sur l'enclume froide.\nIl répétait que tu avais pris toute la force.\n\nAttaque lourde : maintenir K (Y), relâcher. Chargée, elle brise les murs fissurés.\nLa Cadence : refrappe pendant l'éclair blanc pour faire chauffer le marteau."},
+	"k": {"type": "capacite", "id": "pics_mineurs", "title": "Les pics des mineurs",
+		"text": "Les pics de ceux qui sont morts au fond, rangés au râtelier comme chaque soir.\nTu les emportes. Avec un peu de sel et une bonne forge, ils serviront encore."},
 	"l": {"type": "lettre", "id": 1, "title": "Lettre d'Ilse, jamais envoyée",
 		"text": "Wendel,\n\nTu es parti avant l'aube pour ne pas me voir pleurer.\nJe t'ai vu quand même, par la fenêtre.\n\nIlse"},
 }
 
-const DATA := {
+const BASE := {
 	"essai": {
 		"name": "Salle d'essai",
 		"zone": "Prototype",
@@ -71,231 +76,14 @@ const DATA := {
 		"################################################################################################################",
 		],
 	},
-	"z1_effondrement": {
-		"name": "La mine effondrée",
-		"zone": "Les galeries de Hautfer",
-		"doors": {"1": ["z1_galerie", "1"]},
-		"hints": [
-			[5, 13, "Glissade (C ou RT) sous l'éboulis"],
-			[5, 4, "Un mur fissuré. Il faudrait un vrai marteau."],
-		],
-		"rows": [
-			"##################################################",
-			"##################################################",
-			"##################################################",
-			"#########################                     ####",
-			"#########################                     ####",
-			"#########################                        1",
-			"####            X                                1",
-			"####            X             G                  1",
-			"####    f       X                                1",
-			"##################################     ###########",
-			"####                #####                     ####",
-			"####                #####                     ####",
-			"####                #####         ####        ####",
-			"####                #####                     ####",
-			"####        G       #####                     ####",
-			"####                #####   ####        G     ####",
-			"####                #####                     ####",
-			"####   P ccc cc            c   c      R       ####",
-			"##################################################",
-			"##################################################",
-			"##################################################",
-			"##################################################",
-		],
-	},
-	"z1_galerie": {
-		"name": "La galerie inondée",
-		"zone": "Les galeries de Hautfer",
-		"doors": {"1": ["z1_effondrement", "1"], "2": ["z1_puits", "1"]},
-		"hints": [
-			[16, 15, "Trempe (E ou LT) dans l'eau"],
-			[36, 15, "Brasier : haut pour se reposer"],
-			[41, 7, "Trop loin pour sauter..."],
-		],
-		"rows": [
-			"########################################################################",
-			"########################################################################",
-			"########################################################################",
-			"#                                                               ########",
-			"#                                                               ########",
-			"1                                                               ########",
-			"1                                                   g           ########",
-			"1                                                               ########",
-			"1                                                            v  ########",
-			"#########                               #########       ################",
-			"#########                                               ################",
-			"#########                                               ################",
-			"############                     G  ####                ################",
-			"############                                            ################",
-			"############  G                                                        2",
-			"###############                             ####  G                    2",
-			"###############                                                        2",
-			"###############           R            F    R                          2",
-			"##################~~~~~~######     #################~~~#################",
-			"##############################^^^^^#####################################",
-			"########################################################################",
-			"########################################################################",
-		],
-	},
-	"z1_puits": {
-		"name": "Le grand puits",
-		"zone": "Les galeries de Hautfer",
-		"doors": {"1": ["z1_galerie", "2"], "2": ["z1_bourg", "1"]},
-		"hints": [
-			[2, 27, "La nuit, la brume se fige"],
-		],
-		"rows": [
-			"########################################",
-			"########################################",
-			"#                                      2",
-			"#######                                2",
-			"#######                          G     2",
-			"#######                                2",
-			"#######                      ###########",
-			"#######                                #",
-			"#######                                #",
-			"#######               ######           #",
-			"#######                                #",
-			"#######                                #",
-			"#######     G  ######                  #",
-			"#######                                #",
-			"#######                                #",
-			"#######               ######           #",
-			"#                                      #",
-			"#  f                                   #",
-			"#######                      ######    #",
-			"#                                      #",
-			"#                        R             #",
-			"#      ====           ######           #",
-			"#                                      #",
-			"#                                      #",
-			"# ====         ######                  #",
-			"#                             G        #",
-			"#                                      #",
-			"#       ######                         #",
-			"#                                      #",
-			"#                 R                    #",
-			"#              ######                  #",
-			"#                                      #",
-			"#                                      #",
-			"#                     ######           #",
-			"#                                      #",
-			"#                                      #",
-			"#              ######                  #",
-			"#                                      #",
-			"#         c                            #",
-			"1       ######                         #",
-			"1                   G                  #",
-			"1                                      #",
-			"1                             cc       #",
-			"########################################",
-			"########################################",
-			"########################################",
-		],
-	},
-	"z1_bourg": {
-		"name": "Les ruines de Hautfer",
-		"zone": "Les galeries de Hautfer",
-		"doors": {"1": ["z1_puits", "2"], "2": ["z1_cloche", "1"]},
-		"hints": [
-			[11, 12, "La forge de Gerold"],
-			[33, 7, "La maison des jumeaux"],
-			[57, 13, "Attaque lourde : maintenir K (Y)"],
-			[66, 4, "Trop haut, même pour un forgeron"],
-		],
-		"rows": [
-			"######################################################################################",
-			"######################################################################################",
-			"#                                                     ###                            #",
-			"#                                                     ###                            #",
-			"#                                                     ###                            #",
-			"#                                                     ###              f             #",
-			"#                                         G           ###           ######           #",
-			"#                                                     ###                            #",
-			"#        ##################     ################      ###                            #",
-			"#        #                                     #      ###                            #",
-			"#        #                                     #      ###                            #",
-			"#        #                                  l  #      ###                            #",
-			"#        #                            #########       ###                     G      #",
-			"#        #              G                             ###                            #",
-			"1        #                                            XXX   G                        2",
-			"1                               #####                 XXX     ######                 2",
-			"1                   m                                 XXX     ######                 2",
-			"1            F     ###        c               R   cc  XXX     ######        c R      2",
-			"######################################################################################",
-			"######################################################################################",
-			"######################################################################################",
-			"######################################################################################",
-		],
-	},
-	"z1_cloche": {
-		"name": "La place de la cloche",
-		"zone": "Les galeries de Hautfer",
-		"doors": {"1": ["z1_bourg", "2"], "2": ["z1_fosse", "1"]},
-		"hints": [
-			[26, 14, "Le puits du Contremaître"],
-			[26, 15, "La grille est pourrie : attaque lourde"],
-		],
-		"rows": [
-			"##################################################",
-			"##################################################",
-			"#                                           ######",
-			"#                                           ######",
-			"#                                           ######",
-			"#                                           ######",
-			"#                                           ######",
-			"#                                           ######",
-			"#                                           ######",
-			"#                                           ######",
-			"#                                   G       ######",
-			"#                                           ######",
-			"#             G                             ######",
-			"#                                           ######",
-			"1                                           ######",
-			"1                 ######                    ######",
-			"1                 ######                    ######",
-			"1       S         ######  c c           c   ######",
-			"##############################wwXXXXww############",
-			"################################    ##############",
-			"################################    ##############",
-			"################################2222##############",
-		],
-	},
-	"z1_fosse": {
-		"name": "La fosse du Contremaître",
-		"zone": "Les galeries de Hautfer",
-		"boss": "contremaitre",
-		"doors": {"1": ["z1_cloche", "2"]},
-		"hints": [
-			[34, 15, "La route de la Lande (étape 3)"],
-		],
-		"rows": [
-			"####################111111####################",
-			"####################      ####################",
-			"#                                            #",
-			"#                                            #",
-			"#                                            #",
-			"#              #######                       #",
-			"#                                            #",
-			"#                                            #",
-			"#       #####                                #",
-			"#                                            #",
-			"#                                            #",
-			"#  #####                              #####  #",
-			"#                                            #",
-			"#                                            #",
-			"#       #####                    #####       #",
-			"#                                            #",
-			"#                                           ##",
-			"#  #####                              ##### ##",
-			"#                                           ##",
-			"#     c  c                  c     B   c  c  ##",
-			"##############################################",
-			"##############################################",
-			"##############################################",
-			"##############################################",
-		],
-	},
-
 }
+
+
+## Toutes les salles du jeu : la salle d'essai et les zones.
+static var DATA := _all()
+
+
+static func _all() -> Dictionary:
+	var d := BASE.duplicate()
+	d.merge(RoomsHautfer.DATA)
+	return d

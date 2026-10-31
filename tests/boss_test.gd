@@ -1,7 +1,7 @@
 extends Node
 ## Test automatique du Contremaître, sans écran : godot --headless res://tests/boss_test.tscn
 ## Entrée par le puits, réveil, visages, pioche et ondes, effondrement, deuxième phase, mort,
-## et remontée vers la place de la cloche.
+## et remontée dans le Grand Puits.
 
 var game: Game
 var p: Player
@@ -10,7 +10,7 @@ var fails := 0
 
 func _ready() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(World.SAVE_PATH))
-	Game.debug_room = "z1_cloche"
+	Game.debug_room = "h21_carreau"
 	game = load("res://scenes/main.tscn").instantiate()
 	add_child(game)
 	p = game.player
@@ -62,8 +62,11 @@ func _hit(b: Contremaitre, rect: Rect2, dmg: int) -> String:
 
 func _run() -> void:
 	# La grille pourrie du puits cède à l'attaque lourde chargée, et on tombe dans la fosse.
-	await _wait(0.4)
-	p.position = _cell(30, 17)
+	await _wait(0.2)
+	p.position = _cell(99, 18)
+	p.velocity = Vector2.ZERO
+	for e in game.room.get_children().filter(func(n): return n is Soldier):
+		e.queue_free()
 	p.facing = 1
 	await _wait(0.4)
 	Input.action_press("lourde")
@@ -71,14 +74,13 @@ func _run() -> void:
 	Input.action_release("lourde")
 	await _wait(0.4)
 	_check(get_tree().get_nodes_in_group("fragile").is_empty(), "l'attaque lourde brise la grille du puits")
-	p.position = _cell(33, 17)
-	for i in 400:
+	for i in 600:
 		await get_tree().physics_frame
-		if game.room.id == "z1_fosse":
+		if game.room.id == "h19_fosse":
 			break
-	await _wait(1.0)
+	await _wait(2.0)
 	var b := _boss()
-	_check(game.room.id == "z1_fosse" and b != null, "on tombe dans la fosse du Contremaître")
+	_check(game.room.id == "h19_fosse" and b != null, "on tombe par le Grand Puits dans la fosse du Contremaître")
 	if b == null:
 		return
 	_check(b.is_engaged() and game.doors_locked and game.boss == b, "il s'éveille quand Wendel touche le sol, la fosse se ferme")
@@ -177,26 +179,26 @@ func _run() -> void:
 	await _tap_ui("saut")
 	await _wait(0.2)
 
-	# On remonte par le puits
+	# On remonte par les échafaudages, dans le Grand Puits
 	p.max_hp = 7
 	p.hp = 7
-	p.position = _cell(21, 4)
+	p.position = _cell(61, 4)
 	p.velocity = Vector2.ZERO
 	await _wait(0.4)
 	Input.action_press("saut")
 	for i in 120:
 		await get_tree().physics_frame
-		if game.room.id == "z1_cloche":
+		if game.room.id == "h23_grand_puits":
 			break
 	Input.action_release("saut")
-	Input.action_press("gauche")
+	Input.action_press("droite")
 	await _wait(0.6)
-	Input.action_release("gauche")
-	await _wait(0.6)
-	_check(game.room.id == "z1_cloche" and p.is_on_floor() and p.position.y < 18 * 32,
-		"on remonte du puits sur la place de la cloche (y=%.0f)" % p.position.y)
+	Input.action_release("droite")
+	await _wait(0.8)
+	_check(game.room.id == "h23_grand_puits" and p.is_on_floor() and p.position.y < 59 * 32,
+		"on remonte de la fosse sur l'échafaudage du Grand Puits (y=%.0f)" % p.position.y)
 
 	# Le boss vaincu ne revient pas
-	game._load_room("z1_fosse", _cell(10, 19))
+	game._load_room("h19_fosse", _cell(10, 40))
 	await _wait(0.3)
 	_check(_boss() == null, "le Contremaître vaincu ne revient pas")

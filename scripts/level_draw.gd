@@ -1,12 +1,13 @@
 class_name LevelDraw
 extends Node2D
-## Dessin « gris » d'une salle : blocs, eau, pics, brume, cercles de sel, brasiers, corps et panneaux.
+## Dessin « gris » d'une salle : blocs, eau, pics, échafaudages, brume, cercles de sel, brasiers, corps et panneaux.
 
 var solids: Array[Rect2] = []
 var water: Array[Rect2] = []
 var hazards: Array[Rect2] = []
 var rests: Array = []
 var mist: Array[Rect2] = []
+var planks: Array[Rect2] = []
 var corpses: Array[Vector2] = []
 var wells: Array[Rect2] = []
 var hints: Array = []
@@ -46,6 +47,12 @@ func _draw() -> void:
 			var base := r.position.y + 6.0
 			draw_colored_polygon(PackedVector2Array([
 				Vector2(x0, base), Vector2((x0 + x1) * 0.5, base - 14.0), Vector2(x1, base)]), C_SPIKE)
+	for r in planks:
+		# Échafaudage de mine : une planche sur deux poteaux.
+		draw_rect(Rect2(r.position + Vector2(0, 2), Vector2(r.size.x, 8)), Color(0.45, 0.36, 0.27))
+		draw_line(r.position + Vector2(0, 2), Vector2(r.end.x, r.position.y + 2), Color(0.6, 0.5, 0.38), 2.0)
+		for px in [r.position.x + 6.0, r.end.x - 6.0]:
+			draw_line(Vector2(px, r.position.y + 10), Vector2(px, r.position.y + 30), Color(0.38, 0.3, 0.23), 3.0)
 	for r in mist:
 		# Le jour, une brume à peine visible ; la nuit, une dalle spectrale sur laquelle on marche.
 		var c := C_SPIRIT

@@ -277,7 +277,7 @@ func boss_defeated(b) -> void:
 	World.save_game()
 	if b is Contremaitre:
 		show_text("Le Contremaître",
-			"La masse se défait. Wendel reconnaît des visages.\n\nLe vieux Hendrik, qui lui avait appris à tenir une pioche.\nMarthe la boulangère, et ses deux fils.\nAldo, le contremaître, qui criait la cadence au fond des puits.\n\nIl les cherche tous, un par un.\nIlse n'est pas parmi eux.")
+			"La masse se défait. Wendel reconnaît des visages.\n\nLe vieux Hendrik, qui lui avait appris à tenir une pioche.\nGrete la boulangère, et ses deux fils.\nAldo, le contremaître, qui criait la cadence au fond des puits.\n\nIl les cherche tous, un par un.\nIlse n'est pas parmi eux.")
 
 
 func show_text(title: String, body: String) -> void:

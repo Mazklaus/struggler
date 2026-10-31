@@ -37,6 +37,7 @@ func build(room_id: String) -> void:
 	var mist := StaticBody2D.new()
 	add_child(mist)
 	var mist_rects: Array[Rect2] = []
+	var plank_rects: Array[Rect2] = []
 	var corpses: Array[Vector2] = []
 	var wells: Array[Rect2] = []
 
@@ -45,7 +46,7 @@ func build(room_id: String) -> void:
 		var x := 0
 		while x < line.length():
 			var ch := line[x]
-			if ch in ["#", "^", "w", "="]:
+			if ch in ["#", "^", "w", "=", "-"]:
 				var start := x
 				while x < line.length() and line[x] == ch:
 					x += 1
@@ -53,6 +54,8 @@ func build(room_id: String) -> void:
 				match ch:
 					"=":
 						mist_rects.append(rect)
+					"-":
+						plank_rects.append(rect)
 					"w":
 						wells.append(rect)
 						_merge_down(rect)
@@ -117,6 +120,8 @@ func build(room_id: String) -> void:
 		var shape := _add_box(mist, rect)
 		shape.one_way_collision = true
 		_night_shapes.append(shape)
+	for rect in plank_rects:
+		_add_box(mist, rect).one_way_collision = true
 
 	# Murs fissurés : un bloc par groupe de X ; un mur brisé le reste.
 	var done := {}
@@ -147,6 +152,7 @@ func build(room_id: String) -> void:
 	deco.rests = rests
 	deco.solids = solids
 	deco.mist = mist_rects
+	deco.planks = plank_rects
 	deco.corpses = corpses
 	deco.wells = wells
 	for hnt in data.get("hints", []):
