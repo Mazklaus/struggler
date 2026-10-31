@@ -87,6 +87,12 @@ func build(room_id: String) -> void:
 					var d := Dummy.new()
 					d.position = feet + Vector2(0, -32)
 					add_child(d)
+				"B":
+					var boss_id: String = data.get("boss", "")
+					if boss_id == "contremaitre" and not World.flags.has("boss:" + boss_id):
+						var b := Contremaitre.new()
+						b.position = feet + Vector2(0, -Contremaitre.BODY.y * 0.5)
+						add_child(b)
 				"R":
 					var r := Rampant.new()
 					r.position = feet + Vector2(0, -12)

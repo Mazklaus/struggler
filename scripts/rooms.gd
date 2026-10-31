@@ -11,7 +11,7 @@ extends RefCounted
 ##   1-9  passage vers une autre salle (voir "doors" : chiffre -> [salle, chiffre d'arrivée])
 ##   P  départ d'une nouvelle partie   R  mineur rampant   E  soldat   D  mannequin
 ##   G  point d'apparition des esprits la nuit      g  esprit présent même le jour
-##   c  corps (décor)
+##   c  corps (décor)            B  boss de la salle (voir "boss"), absent une fois vaincu
 ##   Objets (voir ITEMS) : f ferraille, v bandage de Hautfer (+1 PV), m marteau de Gerold,
 ##   l lettre d'Ilse.
 ##
@@ -232,10 +232,10 @@ const DATA := {
 	"z1_cloche": {
 		"name": "La place de la cloche",
 		"zone": "Les galeries de Hautfer",
-		"doors": {"1": ["z1_bourg", "2"]},
+		"doors": {"1": ["z1_bourg", "2"], "2": ["z1_fosse", "1"]},
 		"hints": [
-			[27, 15, "Le puits du Contremaître"],
-			[27, 16, "(à suivre : prochaine PR)"],
+			[26, 14, "Le puits du Contremaître"],
+			[26, 15, "La grille est pourrie : attaque lourde"],
 		],
 		"rows": [
 			"##################################################",
@@ -256,10 +256,45 @@ const DATA := {
 			"1                 ######                    ######",
 			"1                 ######                    ######",
 			"1       S         ######  c c           c   ######",
-			"##############################wwwwwwww############",
-			"##################################################",
-			"##################################################",
-			"##################################################",
+			"##############################wwXXXXww############",
+			"################################    ##############",
+			"################################    ##############",
+			"################################2222##############",
+		],
+	},
+	"z1_fosse": {
+		"name": "La fosse du Contremaître",
+		"zone": "Les galeries de Hautfer",
+		"boss": "contremaitre",
+		"doors": {"1": ["z1_cloche", "2"]},
+		"hints": [
+			[34, 15, "La route de la Lande (étape 3)"],
+		],
+		"rows": [
+			"####################111111####################",
+			"####################      ####################",
+			"#                                            #",
+			"#                                            #",
+			"#                                            #",
+			"#              #######                       #",
+			"#                                            #",
+			"#                                            #",
+			"#       #####                                #",
+			"#                                            #",
+			"#                                            #",
+			"#  #####                              #####  #",
+			"#                                            #",
+			"#                                            #",
+			"#       #####                    #####       #",
+			"#                                            #",
+			"#                                           ##",
+			"#  #####                              ##### ##",
+			"#                                           ##",
+			"#     c  c                  c     B   c  c  ##",
+			"##############################################",
+			"##############################################",
+			"##############################################",
+			"##############################################",
 		],
 	},
 

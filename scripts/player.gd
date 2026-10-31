@@ -653,6 +653,7 @@ func _resolve_hits() -> void:
 		"charge": a.charge,
 		"blanc": a.blanc,
 		"entaille": pics,
+		"rect": rect,
 	}
 	var landed := false
 	for target in get_tree().get_nodes_in_group("hittable"):

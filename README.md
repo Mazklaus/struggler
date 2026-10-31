@@ -60,10 +60,26 @@ dans la Lande. Il faut remonter vers la surface :
 4. **Les ruines de Hautfer** : la forge de Gerold et son **marteau** (attaque lourde, Cadence),
    la maison des jumeaux et la **première lettre d'Ilse**, un mur éboulé à briser, une
    corniche trop haute.
-5. **La place de la cloche** : un cercle de sel, et le puits du Contremaître, encore fermé.
+5. **La place de la cloche** : un cercle de sel, et la grille pourrie du puits (attaque
+   lourde chargée).
+6. **La fosse du Contremaître** : le premier boss (voir plus bas). Des corniches permettent
+   de remonter par le puits une fois la fosse rouverte.
 
 Chaque salle laisse des obstacles qu'on ne peut pas encore franchir (Ruée, escalade, nuit),
 pour donner envie de revenir.
+
+## Le Contremaître
+
+L'amas des mineurs de Hautfer, fondus ensemble par le sacrifice. La masse encaisse presque
+tout : il faut frapper **les visages qui pleurent** (un à la fois, puis deux).
+
+- **Coup de pioche** (il lève la pioche, contour rouge) : frappe devant lui et lance une onde
+  au sol des deux côtés. Sauter par-dessus.
+- **Lanternes** : lancées en cloche, elles laissent une flaque de feu.
+- **Effondrement** (il tremble) : la masse s'écroule et roule vers Wendel. Sauter ou monter
+  sur une corniche. En repoussant, **tous ses visages s'ouvrent** et prennent plus cher.
+- Sous la moitié de sa vie, les visages hurlent : tout va plus vite, deux visages s'ouvrent,
+  et des mineurs rampants se détachent de la masse.
 
 ## Le cycle de la marque
 
@@ -131,11 +147,13 @@ Tous les réglages sont en haut des scripts, avec des commentaires :
 ```
 godot --headless res://tests/smoke_test.tscn
 godot --headless res://tests/world_test.tscn
+godot --headless res://tests/boss_test.tscn
 ```
 
 Le premier pilote Wendel dans la salle d'essai : déplacements, Cadence, Frappe à blanc,
 trempe, parcours, soldat, contre, Panser, repos et changement d'arme, Entaille, glissade au
 mur. Le second joue une nouvelle partie : passages entre salles, repos et sauvegarde, nuit et
-esprits, brume, marteau de Gerold, mur éboulé, lettre d'Ilse, mort et ombre de marqué.
+esprits, brume, marteau de Gerold, mur éboulé, lettre d'Ilse, mort et ombre de marqué. Le
+troisième vérifie le Contremaître, de la grille du puits jusqu'à la remontée.
 
 Fan-game privé, non commercial, d'après *Berserk* de Kentaro Miura.
