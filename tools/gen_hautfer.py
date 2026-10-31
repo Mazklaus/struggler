@@ -20,6 +20,7 @@ class R:
         self.g = [["#"] * self.W for _ in range(self.H)]
         self.doors = {}
         self.hints = []
+        self.labels = []
         self.extra = {}
         # intérieur : 2 cases de roche sur les côtés et en haut, 3 en bas
         self.fill(2, 2, self.W - 3, self.H - 4, " ")
@@ -41,6 +42,19 @@ class R:
 
     def hint(self, x, y, text):
         self.hints.append([x, y, text])
+        return self
+
+    def label(self, x, y, text):
+        """Étiquette de DA : ce que représente un volume (dessinée discrètement, en petit)."""
+        self.labels.append([x, y, text])
+        return self
+
+    def retint(self, x0, y0, x1, y1, to, frm="#"):
+        """Change la matière des blocs d'une zone (roche -> bois, maçonnerie, chair...)."""
+        for y in range(max(0, y0), min(self.H, y1 + 1)):
+            for x in range(max(0, x0), min(self.W, x1 + 1)):
+                if self.g[y][x] == frm:
+                    self.g[y][x] = to
         return self
 
     # --- passages -------------------------------------------------------------------------
@@ -84,19 +98,19 @@ class R:
                 h = (h * 131 + ord(ch)) % 1000003
         return h % 3
 
-    def wl(self, top, end, depth=3):
+    def wl(self, top, end, depth=3, ch="#"):
         """Corniche de roche accrochée au mur gauche (jusqu'à la colonne end) ;
         le dessous s'épaissit vers le mur, de façon irrégulière."""
-        self.fill(2, top, end, top, "#")
+        self.fill(2, top, end, top, ch)
         for k in range(1, depth + 1):
-            self.fill(2, top + k, end - 2 * k - self._jit(top, k), top + k, "#")
+            self.fill(2, top + k, end - 2 * k - self._jit(top, k), top + k, ch)
         return self
 
-    def wr(self, top, start, depth=3):
+    def wr(self, top, start, depth=3, ch="#"):
         """Corniche de roche accrochée au mur droit (à partir de la colonne start)."""
-        self.fill(start, top, self.W - 3, top, "#")
+        self.fill(start, top, self.W - 3, top, ch)
         for k in range(1, depth + 1):
-            self.fill(start + 2 * k + self._jit(top, k), top + k, self.W - 3, top + k, "#")
+            self.fill(start + 2 * k + self._jit(top, k), top + k, self.W - 3, top + k, ch)
         return self
 
     def rough(self, y0, y1, depth=2):
@@ -111,11 +125,11 @@ class R:
                         self.g[y][x] = "#"
         return self
 
-    def mound(self, steps, floor=None):
+    def mound(self, steps, floor=None, ch="#"):
         """Un tas (éboulis, gradins, piles) : [(x0, x1, haut), ...], plein jusqu'au sol."""
         floor = self.H - 4 if floor is None else floor
         for x0, x1, y in steps:
-            self.fill(x0, y, x1, floor, "#")
+            self.fill(x0, y, x1, floor, ch)
         return self
 
     def spot(self, x, y, s):
@@ -145,6 +159,9 @@ def build():
     r.put(26, 18, "G")
     r.hint(18, 12, "La nuit, la brume se fige.")
     r.hint(18, 13, "On voit toute la Lande, et Albion au loin.")
+    # DA : matières et étiquettes
+    r.retint(2, 7, 10, 7, "t")
+    r.label(3, 3, "falaise").label(2, 6, "rocher éboulé")
 
     r = mk("h14_maison", "La maison de Gerold", 1, 2)
     r.side("W", 0, "1", ["h22_belvedere", "1"], ledge=26)
@@ -157,6 +174,11 @@ def build():
     r.spot(8, 18, "l").spot(14, 18, "c")
     r.hint(4, 12, "La chambre d'Ilse.")
     r.hint(4, 33, "L'atelier de Gerold.")
+    # DA : matières et étiquettes
+    r.retint(0, 0, 39, 43, "M").retint(0, 19, 25, 19, "b", "M").retint(20, 20, 37, 40, "b", "M")
+    r.retint(8, 38, 12, 40, "b", "M")
+    r.label(4, 19, "plancher de la chambre").label(28, 37, "escalier en lacets, marches manquantes")
+    r.label(7, 36, "établi").label(3, 1, "murs de pierre de la maison")
 
     r = mk("h15_place", "La place du Puits", 3, 1)
     r.side("W", 0, "1", ["h14_maison", "2"])
@@ -171,6 +193,10 @@ def build():
     r.plat(104, 16, 4).plat(96, 13, 6).put(98, 12, "f")
     r.hint(46, 12, "Le puits du bourg.")
     r.hint(10, 12, "Les tables du dernier repas sont encore dressées.")
+    # DA : matières et étiquettes
+    r.retint(14, 17, 29, 17, "b").retint(80, 17, 97, 17, "b").retint(96, 13, 107, 16, "b")
+    r.label(14, 15, "table").label(80, 15, "table").label(53, 17, "margelle").label(61, 13, "treuil")
+    r.label(96, 11, "auvent").label(103, 14, "étal")
 
     r = mk("h18_fond_puits", "Le fond du puits", 1, 1)
     r.bottom(18, "1", ["h06_roulage", "2"])
@@ -182,6 +208,11 @@ def build():
     r.mound([(22, 27, 16), (28, 36, 13)])        # l'éboulis de maçonnerie tombée du puits
     r.spot(6, 18, "c").spot(33, 12, "R")
     r.hint(4, 12, "Une corde pend encore.")
+    # DA : matières et étiquettes
+    r.retint(14, 2, 16, 7, "M").retint(24, 2, 26, 7, "M").retint(17, 2, 23, 7, "M")
+    r.retint(22, 13, 36, 18, "t")
+    r.label(3, 6, "voûte de la cave").label(25, 3, "cuvelage du puits").label(27, 9, "poutre du treuil")
+    r.label(28, 11, "maçonnerie tombée")
 
     r = mk("h12_rue", "La rue de la Forge", 3, 1)
     r.side("W", 0, "1", ["h15_place", "2"])
@@ -194,6 +225,10 @@ def build():
     r.put(20, 18, "E").put(72, 18, "E").put(106, 18, "E").put(50, 7, "G").put(100, 6, "G")
     r.put(10, 18, "cc").put(66, 18, "c")
     r.hint(58, 10, "La maison commune s'est enfoncée dans la mine.")
+    # DA : matières et étiquettes
+    r.retint(30, 16, 37, 18, "t").retint(71, 16, 74, 16, "b").retint(76, 13, 90, 13, "b").retint(96, 16, 99, 18, "b")
+    r.label(29, 14, "chaussée effondrée").label(69, 14, "charrette").label(76, 11, "galerie de bois")
+    r.label(93, 14, "barricade").label(61, 13, "plancher arraché")
 
     r = mk("h17_maison_commune", "La maison commune", 2, 1)
     r.top(58, "1", ["h12_rue", "3"])
@@ -208,6 +243,11 @@ def build():
     r.plat(14, 16, 5).plat(4, 13, 8).spot(6, 12, "f")
     r.hint(10, 6, "Les murs sont couverts de visages.")
     r.hint(10, 7, "La nuit, les morts parlent ici.")
+    # DA : matières et étiquettes
+    r.retint(46, 2, 56, 7, "M").retint(64, 2, 73, 7, "M").retint(57, 7, 63, 7, "b").retint(61, 4, 63, 4, "b")
+    r.retint(62, 13, 77, 18, "b").retint(14, 16, 18, 16, "b").retint(4, 13, 11, 13, "b")
+    r.label(47, 8, "toit enfoncé").label(61, 8, "poutre maîtresse").label(66, 11, "bancs et tables empilés")
+    r.label(3, 11, "estrade des échevins").label(13, 14, "banc")
 
     r = mk("h13_forge", "La forge de Gerold", 1, 1)
     r.side("W", 0, "1", ["h12_rue", "2"])
@@ -216,6 +256,9 @@ def build():
     r.put(9, 18, "F")
     r.fill(28, 8, 37, 18, "#").fill(28, 16, 37, 18, " ")   # la hotte de la forge
     r.hint(4, 10, "La forge de Gerold.")
+    # DA : matières et étiquettes
+    r.retint(17, 17, 21, 18, "a").retint(28, 8, 37, 15, "M")
+    r.label(16, 15, "enclume").label(29, 7, "hotte de la forge")
 
     r = mk("h21_carreau", "Le carreau de la mine", 3, 1)
     r.side("W", 0, "1", ["h13_forge", "2"])
@@ -233,6 +276,10 @@ def build():
     r.hint(88, 10, "Le Grand Puits. La grille est pourrie :")
     r.hint(88, 11, "attaque lourde chargée.")
     r.hint(50, 3, "Le monte-charge, en haut du terril.")
+    # DA : matières et étiquettes
+    r.retint(20, 10, 34, 13, "b").retint(35, 6, 58, 15, "t").retint(112, 2, 117, 10, "M").retint(14, 16, 18, 16, "a")
+    r.label(19, 11, "chevalement effondré").label(40, 4, "terril").label(37, 16, "boisage : on passe dessous")
+    r.label(103, 13, "chevalement du Grand Puits").label(108, 11, "vestiaire").label(12, 14, "wagonnet")
 
     r = mk("h08_monte_charge", "Le monte-charge", 1, 1)
     r.bottom(18, "1", ["h21_carreau", "3"])
@@ -240,6 +287,9 @@ def build():
     r.fill(14, 2, 25, 5, "#")                    # la cabine, bloquée tout en haut
     r.hint(4, 9, "La cabine est bloquée tout en haut du câble.")
     r.hint(4, 10, "Le levier doit être là-haut, sur la route.")
+    # DA : matières et étiquettes
+    r.retint(22, 16, 28, 18, "a").retint(14, 2, 25, 5, "a")
+    r.label(15, 6, "cabine bloquée").label(22, 14, "contrepoids tombé")
 
     r = mk("h16_clocher", "Le clocher de la mine", 1, 2)
     r.side("W", 1, "1", ["h21_carreau", "2"])
@@ -251,6 +301,11 @@ def build():
     r.fill(14, 3, 25, 5, "#").spot(19, 10, "f")  # la cloche, fêlée
     r.spot(20, 20, "G").spot(12, 14, "G")
     r.hint(4, 30, "La cloche qui sonnait le début et la fin du travail.")
+    # DA : matières et étiquettes
+    r.retint(0, 0, 39, 43, "M").retint(2, 11, 37, 35, "b", "M").retint(31, 36, 35, 40, "b", "M")
+    r.retint(14, 3, 25, 5, "a", "M")
+    r.label(26, 4, "cloche fêlée").label(9, 33, "plancher et trappe").label(25, 37, "restes d'escalier")
+    r.label(3, 41, "tour de pierre")
 
     # ======================================================================== les galeries
     r = mk("h06_roulage", "La galerie de roulage", 5, 1)
@@ -269,6 +324,11 @@ def build():
     r.spot(64, 18, "c").spot(140, 18, "cc")
     r.hint(80, 11, "Le puits du bourg, au-dessus.")
     r.hint(10, 13, "La nuit, la brume se fige.")
+    # DA : matières et étiquettes
+    r.retint(94, 2, 96, 7, "M").retint(104, 2, 106, 7, "M").retint(97, 7, 98, 7, "M").retint(101, 4, 103, 4, "M")
+    r.retint(102, 13, 120, 18, "t").retint(30, 17, 33, 18, "a").retint(150, 16, 155, 18, "t")
+    r.label(86, 9, "voûte crevée").label(105, 9, "chapeau de boisage").label(104, 11, "éboulis du puits")
+    r.label(28, 15, "berline renversée").label(148, 14, "éboulis").label(10, 6, "corniche")
 
     r = mk("h07_wagonnets", "La chambre des wagonnets", 2, 2)
     r.side("W", 0, "1", ["h06_roulage", "1"])
@@ -283,6 +343,11 @@ def build():
     r.hint(4, 12, "Vers le puits du bourg")
     r.hint(60, 12, "Vers la lampisterie")
     r.hint(24, 34, "L'atelier du boisage, en bas")
+    # DA : matières et étiquettes
+    r.retint(0, 19, 79, 21, "b").retint(28, 22, 63, 40, "t").retint(22, 38, 27, 40, "a")
+    r.retint(34, 30, 36, 31, "a", "t").retint(43, 25, 47, 26, "a", "t").retint(52, 31, 55, 32, "a", "t")
+    r.label(4, 17, "plancher de la recette").label(45, 19, "le trou")
+    r.label(46, 33, "berlines, rails et roche, tombés par le trou").label(20, 36, "berline")
 
     r = mk("h11_boisage", "L'atelier du boisage", 2, 1)
     r.top(18, "1", ["h07_wagonnets", "3"])
@@ -293,6 +358,10 @@ def build():
     r.plat(40, 17, 3).plat(64, 16, 6)
     r.spot(46, 18, "R").spot(70, 18, "R").spot(56, 6, "G")
     r.hint(44, 10, "Les pics des mineurs morts, au râtelier.")
+    # DA : matières et étiquettes
+    r.retint(24, 9, 37, 18, "b").retint(44, 14, 60, 14, "b").retint(40, 17, 42, 17, "b").retint(64, 16, 69, 16, "b")
+    r.label(28, 7, "piles de bois de mine").label(22, 4, "chèvre de levage").label(46, 12, "râtelier")
+    r.label(38, 15, "établi").label(63, 14, "scie de long")
 
     r = mk("h03_lampisterie", "Le puits de la lampisterie", 1, 5)
     r.side("W", 0, "1", ["h07_wagonnets", "2"], ledge=12)
@@ -318,6 +387,10 @@ def build():
     r.rough(20, 102, 1)
     r.spot(20, 92, "G").spot(30, 71, "G").spot(20, 38, "G").spot(32, 20, "G")
     r.hint(12, 103, "Brasier : haut pour se reposer.")
+    # DA : matières et étiquettes
+    r.retint(24, 103, 37, 106, "b")
+    r.label(25, 101, "caisses de lampes").label(16, 66, "pilier").label(29, 64, "niche des lampistes")
+    r.label(4, 53, "cul-de-sac").label(23, 30, "écailles de roche")
 
     r = mk("h24_boiseurs", "Le passage des boiseurs", 1, 1)
     r.side("W", 0, "1", ["h03_lampisterie", "2"])
@@ -325,6 +398,8 @@ def build():
     r.fill(2, 2, 37, 12, "#")                    # un boyau bas
     r.fill(18, 13, 19, 18, "X")
     r.hint(4, 15, "Un boyau vers la fosse.")
+    # DA : matières et étiquettes
+    r.label(4, 11, "boyau étayé")
 
     r = mk("h23_grand_puits", "Le Grand Puits", 1, 3)
     r.top(18, "1", ["h21_carreau", "4"])
@@ -342,6 +417,10 @@ def build():
     r.rough(4, 60, 1)
     r.spot(6, 30, "G").spot(32, 47, "G").spot(8, 62, "R").spot(24, 62, "c")
     r.hint(26, 2, "Les parois sont tapissées de chair.")
+    # DA : matières et étiquettes
+    r.retint(0, 0, 39, 65, "o").retint(0, 0, 39, 1, "#", "o").retint(0, 63, 39, 65, "#", "o")
+    r.retint(10, 38, 18, 40, "a", "o").retint(21, 59, 27, 59, "b", "o")
+    r.label(10, 36, "cage d'extraction coincée").label(28, 57, "palier").label(26, 4, "parois de chair")
 
     r = mk("h19_fosse", "La fosse du Contremaître", 2, 2)
     r.extra["boss"] = "contremaitre"
@@ -360,6 +439,11 @@ def build():
         r.spot(x, 40, "c")
     r.spot(32, 40, "B")
     r.hint(66, 14, "La galerie d'extraction")
+    # DA : matières et étiquettes
+    r.retint(41, 21, 68, 40, "t").retint(57, 7, 58, 7, "o").retint(61, 4, 63, 4, "o")
+    r.retint(62, 16, 66, 16, "o").retint(54, 13, 58, 13, "o").retint(61, 10, 66, 10, "o")
+    r.label(44, 36, "gradins de la fosse").label(66, 14, "racines de chair").label(4, 30, "échafaudages")
+    r.label(42, 9, "voûte")
 
     r = mk("h20_extraction", "La galerie d'extraction", 2, 1)
     r.side("W", 0, "1", ["h19_fosse", "3"])
@@ -369,6 +453,9 @@ def build():
     r.fill(44, 16, 49, 18, "#").fill(50, 13, 60, 18, "#").fill(61, 16, 65, 18, "#").put(70, 18, "c")
     r.hint(56, 9, "La Lande aux Pendus, à l'est")
     r.hint(56, 10, "(prochaine étape de la tranche)")
+    # DA : matières et étiquettes
+    r.retint(20, 15, 33, 18, "t").retint(44, 13, 65, 18, "t")
+    r.label(20, 13, "déblais").label(46, 11, "éboulement")
 
     # ======================================================================== le fond
     r = mk("h01_effondrement", "L'effondrement", 2, 1)
@@ -381,6 +468,9 @@ def build():
     r.plat(56, 16, 3).fill(60, 13, 70, 13, "#").spot(64, 12, "f")
     r.spot(30, 8, "G").spot(62, 6, "G")
     r.hint(36, 14, "Glissade (C ou RT) sous l'éboulis")
+    # DA : matières et étiquettes
+    r.retint(22, 16, 27, 18, "t").retint(44, 2, 48, 17, "t").retint(56, 16, 58, 16, "t")
+    r.label(20, 14, "bloc tombé").label(49, 10, "éboulis").label(60, 11, "corniche")
 
     r = mk("h02_corps", "La galerie des corps", 2, 1)
     r.side("W", 0, "1", ["h01_effondrement", "2"])
@@ -392,6 +482,9 @@ def build():
         r.spot(x, 18, "c")
     r.spot(32, 18, "R").spot(54, 18, "R").spot(40, 8, "G")
     r.hint(10, 13, "Une chapelle, en contrebas.")
+    # DA : matières et étiquettes
+    r.retint(22, 16, 27, 18, "M").retint(46, 16, 52, 16, "b").retint(58, 17, 62, 18, "t")
+    r.label(21, 14, "autel renversé").label(45, 14, "passerelle").label(57, 15, "déblais")
 
     r = mk("h04_etais", "Les étais", 2, 1)
     r.side("E", 0, "1", ["h01_effondrement", "1"])
@@ -402,6 +495,9 @@ def build():
     r.fill(26, 18, 29, 18, "^").fill(48, 18, 51, 18, "^")
     r.put(40, 18, "R").put(30, 7, "G")
     r.hint(12, 14, "Un mur fissuré. Il faudrait un vrai marteau.")
+    # DA : matières et étiquettes
+    r.retint(20, 2, 56, 12, "b")
+    r.label(21, 10, "étais pourris")
 
     r = mk("h05_veine_morte", "La veine morte", 1, 1)
     r.top(18, "1", ["h01_effondrement", "3"])
@@ -413,6 +509,9 @@ def build():
     r.mound([(4, 11, 16)]).spot(7, 15, "v")
     r.spot(24, 18, "R")
     r.hint(4, 10, "Une veine abandonnée.")
+    # DA : matières et étiquettes
+    r.retint(4, 16, 11, 18, "t")
+    r.label(25, 9, "pilier").label(31, 5, "fente").label(4, 14, "déblais")
 
     r = mk("h09_chapelle", "La chapelle des mineurs", 1, 1)
     r.top(18, "1", ["h02_corps", "3"])
@@ -423,6 +522,9 @@ def build():
     r.fill(4, 12, 12, 18, "#")   # la porte scellée
     r.hint(2, 9, "Une porte scellée par un signe qu'on ne sait pas lire.")
     r.hint(2, 10, "Des béquilles ont usé la pierre du seuil.")
+    # DA : matières et étiquettes
+    r.retint(22, 7, 37, 18, "M").retint(21, 6, 23, 6, "M").retint(4, 12, 12, 18, "M")
+    r.label(26, 5, "tribune").label(28, 15, "escalier taillé").label(4, 11, "porte scellée").label(17, 4, "reliquaire")
 
     r = mk("h10_galerie_noyee", "La galerie noyée", 2, 1)
     r.side("E", 0, "1", ["h04_etais", "2"])
@@ -430,6 +532,8 @@ def build():
     r.fill(2, 2, 77, 8, "#")
     r.hint(40, 10, "Le courant tire vers l'ouest.")
     r.hint(40, 11, "Il faudrait savoir nager.")
+    # DA : matières et étiquettes
+    r.label(30, 10, "eau noire")
 
     return rooms
 
@@ -452,6 +556,9 @@ def to_gd(rooms):
         out.append(f"\t\t\"doors\": {{{doors}}},")
         hints = ", ".join('[%d, %d, "%s"]' % (h[0], h[1], h[2].replace('"', '\\"')) for h in r.hints)
         out.append(f"\t\t\"hints\": [{hints}],")
+        if r.labels:
+            labels = ", ".join('[%d, %d, "%s"]' % (h[0], h[1], h[2].replace('"', '\\"')) for h in r.labels)
+            out.append(f"\t\t\"labels\": [{labels}],")
         out.append('\t\t"rows": [')
         for row in r.rows():
             out.append(f'\t\t\t"{row}",')

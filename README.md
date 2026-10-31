@@ -73,6 +73,11 @@ lacets de la maison de Gerold, les planchers à trappes du clocher, le terril qu
 monte-charge, les gradins de la fosse, le pilier de la veine morte. Les seules plateformes
 qu'on traverse par dessous (`-`) sont des bois : treuil, poutres, chevalement, tribune.
 
+Le dessin reste gris, mais chaque bloc porte une matière sommaire (roche, bois, maçonnerie,
+chair, éboulis, fer) et de petites étiquettes disent ce que représentent les volumes
+(wagonnet, cage d'extraction, terril, cloche fêlée…) : des indications pour la direction
+artistique, en attendant les vrais décors.
+
 Restent fermés pour plus tard : la galerie noyée (Plongée), la chapelle des mineurs (Vue
 astrale) et le levier du monte-charge (depuis la Route des pèlerins). La nuit, la brume se
 fige sur le belvédère et dans la galerie de roulage, et la veine morte cache un bandage

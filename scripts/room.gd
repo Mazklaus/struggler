@@ -4,11 +4,14 @@ extends Node2D
 ## Elle porte ses blocs, son décor, ses ennemis et ses objets ; on la jette en sortant.
 
 const TILE := 32.0
+## Blocs pleins : caractère -> matière (indication de DA pour le dessin gris).
+const MATS := {"#": "roche", "^": "roche", "b": "bois", "M": "maconnerie", "o": "chair", "t": "eboulis", "a": "fer"}
 
 var id := ""
 var data := {}
 var size := Vector2.ZERO
 var solids: Array[Rect2] = []
+var solid_mats: Array[String] = []   # matière de chaque bloc (voir MATS), pour le dessin
 var water: Array[Rect2] = []
 var hazards: Array[Rect2] = []
 var rests: Array = []            # [{"rect": Rect2, "kind": "S" ou "F"}]
@@ -46,7 +49,7 @@ func build(room_id: String) -> void:
 		var x := 0
 		while x < line.length():
 			var ch := line[x]
-			if ch in ["#", "^", "w", "=", "-"]:
+			if ch in ["^", "w", "=", "-"] or MATS.has(ch):
 				var start := x
 				while x < line.length() and line[x] == ch:
 					x += 1
@@ -58,9 +61,9 @@ func build(room_id: String) -> void:
 						plank_rects.append(rect)
 					"w":
 						wells.append(rect)
-						_merge_down(rect)
+						_merge_down(rect, "maconnerie")
 					_:
-						_merge_down(rect)
+						_merge_down(rect, MATS[ch])
 				if ch == "^":
 					hazards.append(Rect2(rect.position + Vector2(4, -6), Vector2(rect.size.x - 8, 14)))
 				continue
@@ -151,6 +154,9 @@ func build(room_id: String) -> void:
 	deco.hazards = hazards
 	deco.rests = rests
 	deco.solids = solids
+	deco.solid_mats = solid_mats
+	for lb in data.get("labels", []):
+		deco.labels.append([Vector2(lb[0] * TILE, lb[1] * TILE), lb[2]])
 	deco.mist = mist_rects
 	deco.planks = plank_rects
 	deco.corpses = corpses
@@ -204,13 +210,14 @@ func floor_below(pos: Vector2) -> float:
 	return best
 
 
-func _merge_down(rect: Rect2) -> void:
+func _merge_down(rect: Rect2, mat: String) -> void:
 	for i in solids.size():
 		var r := solids[i]
-		if r.position.x == rect.position.x and r.size.x == rect.size.x and r.end.y == rect.position.y:
+		if solid_mats[i] == mat and r.position.x == rect.position.x and r.size.x == rect.size.x and r.end.y == rect.position.y:
 			solids[i] = r.merge(rect)
 			return
 	solids.append(rect)
+	solid_mats.append(mat)
 
 
 func _add_box(body: StaticBody2D, rect: Rect2) -> CollisionShape2D:
