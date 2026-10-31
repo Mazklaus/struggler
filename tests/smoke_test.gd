@@ -33,6 +33,13 @@ func _tap(action: String) -> void:
 	Input.action_release(action)
 
 
+func _until_window() -> void:
+	for i in 240:
+		await get_tree().physics_frame
+		if p.window_left() > 0.5:
+			return
+
+
 func _run() -> void:
 	await _wait(0.6)
 	_check(p.is_on_floor(), "Wendel est posé au sol")
@@ -53,38 +60,46 @@ func _run() -> void:
 	Input.action_release("saut")
 	await _wait(0.8)
 
-	# Cadence sur le mannequin
+	# Cadence sur le mannequin : refrapper pendant l'éclair blanc
 	p.position = Vector2(11 * 32 + 16 - 50, p.position.y)
 	p.facing = 1
 	await _wait(0.3)
-	for i in 6:
+	await _tap("attaque")
+	for i in 5:
+		await _until_window()
 		await _tap("attaque")
-		await _wait(0.5 - 2.0 / 120.0)
-		if i == 2:
-			print("    chaleur après 3 frappes : %.0f" % p.heat)
-	_check(p.streak >= 4 or p.heat == 0.0, "la Cadence s'enchaîne (série %d, chaleur %.0f)" % [p.streak, p.heat])
-	await _wait(0.1)
+	await _wait(0.3)
+	_check(p.streak >= 4 and p.heat >= 67.0, "la Cadence s'enchaîne pendant l'éclair (série %d, chaleur %.0f)" % [p.streak, p.heat])
+
+	# Hors tempo : la Chaleur ne monte pas, mais ne retombe pas non plus
+	await _wait(0.4)
+	p.heat = 50.0
 	var heat_before := p.heat
-	print("    chaleur avant la frappe suivante : %.0f" % heat_before)
-	# On frappe trop tôt : le rythme casse.
-	await _wait(1.0)
 	await _tap("attaque")
-	await _wait(0.25)
+	await _wait(0.06)
 	await _tap("attaque")
-	await _wait(0.5)
-	_check(p.last_judgment == "Trop tôt" or p.streak == 0, "une frappe trop tôt casse le rythme (%s)" % p.last_judgment)
+	await _wait(0.6)
+	_check(p.heat >= heat_before - 0.5, "frapper hors tempo ne fait pas retomber la Chaleur (%.0f -> %.0f)" % [heat_before, p.heat])
 
 	# Monter à blanc
+	await _wait(0.8)
 	p.heat = 95.0
 	var saw_blanc := false
+	await _tap("attaque")
 	for i in 3:
+		await _until_window()
 		await _tap("attaque")
 		saw_blanc = saw_blanc or p._atk.get("blanc", false)
-		await _wait(0.5 - 2.0 / 120.0)
-	await _wait(0.1)
+	await _wait(0.3)
 	print("    chaleur après la Frappe à blanc : %.0f" % p.heat)
-	_check(saw_blanc and p.heat < 100.0, "la Frappe à blanc part et vide la Chaleur")
-	await _wait(1.0)
+	_check(saw_blanc and p.heat < 100.0 and p.heat_tier() >= 2, "la Frappe à blanc part et la Chaleur retombe au palier 2 (%.0f)" % p.heat)
+
+	# La Chaleur ne retombe qu'après deux secondes sans frapper
+	var h := p.heat
+	await _wait(1.5)
+	var h_mid := p.heat
+	await _wait(1.5)
+	_check(h_mid >= h - 0.5 and p.heat < h, "la Chaleur tient deux secondes puis retombe (%.0f, %.0f, %.0f)" % [h, h_mid, p.heat])
 
 	# Trempe dans l'eau
 	p.heat = 50.0
@@ -151,7 +166,7 @@ func _run() -> void:
 		await get_tree().physics_frame
 		if p.state != Player.S.NORMAL or p._invuln > 0.0:
 			continue
-		if soldier.state == Soldier.S.CHASE:
+		if soldier.state == Soldier.S.CHASE or soldier.state == Soldier.S.PATROL:
 			p.position = soldier.position + Vector2(-80, 0)
 			p.facing = 1
 		if soldier.state == Soldier.S.WINDUP and soldier._t > 0.42:
@@ -180,3 +195,33 @@ func _run() -> void:
 	await _wait(0.1)
 	_check(soldier.state == Soldier.S.DEAD, "le soldat meurt")
 	_check(get_tree().get_nodes_in_group("trempe").any(func(n): return n is BloodPool), "il laisse une flaque de sang pour la trempe")
+
+	# Pics de mineur : changer d'arme au sanctuaire, puis l'Entaille
+	p.hp = p.max_hp
+	p.position = Vector2(5 * 32 + 16, 16 * 32)
+	await _wait(0.5)
+	await _tap("haut")
+	await _wait(0.1)
+	_check(p.weapon == Player.W.PICS, "le sanctuaire change l'arme pour les Pics")
+	var dummy: Dummy
+	for d in get_tree().get_nodes_in_group("hittable"):
+		if d is Dummy:
+			dummy = d
+	p.position = Vector2(dummy.position.x - 46, 16 * 32)
+	p.facing = 1
+	await _wait(0.3)
+	var t0 := Time.get_ticks_msec()
+	for i in 5:
+		await _tap("attaque")
+		await _wait(0.2)
+	var dt := (Time.get_ticks_msec() - t0) / 1000.0
+	_check(dummy.is_bleeding(), "cinq coups de Pics font saigner la cible (en %.1f s)" % dt)
+
+	# Pics : glisser le long d'un mur
+	p.position = Vector2(60, 200)
+	p.velocity = Vector2.ZERO
+	Input.action_press("gauche")
+	await _wait(0.5)
+	var vy := p.velocity.y
+	Input.action_release("gauche")
+	_check(vy <= p.wall_slide_speed + 1.0 and vy > 0.0, "les Pics freinent la chute contre un mur (vitesse %.0f)" % vy)

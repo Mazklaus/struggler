@@ -32,6 +32,10 @@ var _burn := 0.0
 var _burn_tick := 0.0
 var _flash := 0.0
 var _down_time := 1.6
+var _wounds := 0            # plaies ouvertes par les Pics (l'Entaille)
+var _wound_timer := 0.0
+var _bleed := 0.0
+var _bleed_tick := 0.0
 
 
 func _ready() -> void:
@@ -54,6 +58,7 @@ func _physics_process(delta: float) -> void:
 	_attack_cd = maxf(_attack_cd - delta, 0.0)
 	_flash = maxf(_flash - delta, 0.0)
 	_update_burn(delta)
+	_update_bleed(delta)
 	velocity.y = minf(velocity.y + GRAVITY * delta, 900.0)
 
 	var p := Game.inst.player
@@ -149,6 +154,33 @@ func _update_burn(delta: float) -> void:
 		Game.inst.fx.sparks(position + Vector2(randf_range(-10, 10), -10), 3, Color(1.0, 0.55, 0.15), 120.0, -200.0, 0.5)
 
 
+## L'Entaille : chaque coup de Pics ouvre une plaie ; à la cinquième, la cible saigne fort.
+func _add_wound() -> void:
+	_wounds += 1
+	_wound_timer = 3.0
+	if _wounds >= 5:
+		_wounds = 0
+		_bleed = 1.5
+		_bleed_tick = 0.0
+		Sfx.play("blesse", -2.0, 0.8)
+		Game.inst.fx.text(position + Vector2(0, -66), "Saignée !", Color(0.9, 0.2, 0.2), 18)
+		Game.inst.fx.sparks(position, 24, Color(0.6, 0.05, 0.05), 340.0, 1200.0, 0.8)
+
+
+func _update_bleed(delta: float) -> void:
+	_wound_timer = maxf(_wound_timer - delta, 0.0)
+	if _wound_timer <= 0.0:
+		_wounds = 0
+	if _bleed <= 0.0 or state == S.DEAD:
+		return
+	_bleed -= delta
+	_bleed_tick -= delta
+	if _bleed_tick <= 0.0:
+		_bleed_tick = 0.25
+		_damage(1, true)
+		Game.inst.fx.sparks(position + Vector2(randf_range(-10, 10), 0), 4, Color(0.6, 0.05, 0.05), 160.0, 1200.0, 0.5)
+
+
 func take_hit(info: Dictionary) -> String:
 	if state == S.DEAD:
 		return "none"
@@ -176,6 +208,8 @@ func take_hit(info: Dictionary) -> String:
 	if info.burn:
 		_burn = 2.0
 		_burn_tick = 0.5
+	if info.get("entaille", false):
+		_add_wound()
 	_damage(dmg, true)
 	if state == S.DEAD:
 		return "hit"
@@ -222,6 +256,8 @@ func _die() -> void:
 
 func _respawn() -> void:
 	position = _spawn
+	_wounds = 0
+	_bleed = 0.0
 	velocity = Vector2.ZERO
 	hp = max_hp
 	_guard_hits = 0
@@ -287,6 +323,9 @@ func _draw() -> void:
 		var crack := float(_guard_hits) / guard_limit
 		var sc := Color(0.6, 0.55, 0.45).lerp(Color(0.35, 0.25, 0.2), crack)
 		draw_rect(Rect2(facing * 16 - 5, -24, 10, 40), sc)
+	# Plaies de l'Entaille
+	for i in _wounds:
+		draw_line(Vector2(-12 + i * 6, -BODY.y * 0.5 - 26), Vector2(-9 + i * 6, -BODY.y * 0.5 - 32), Color(0.85, 0.15, 0.15), 2.0)
 	# Vie
 	var w := 36.0
 	draw_rect(Rect2(-w * 0.5, -BODY.y * 0.5 - 18, w, 4), Color(0.15, 0.15, 0.15))

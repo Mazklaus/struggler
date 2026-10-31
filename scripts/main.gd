@@ -7,7 +7,7 @@ static var inst: Game
 const TILE := 32.0
 
 ## Légende : # bloc, X mur fragile (attaque lourde), ^ pics, ~ eau (trempe),
-## P départ de Wendel, E soldat, D mannequin d'entraînement.
+## P départ de Wendel, E soldat, D mannequin d'entraînement, S sanctuaire (changer d'arme).
 const LEVEL := [
 	"################################################################################################################",
 	"#                                                                    ##                                        #",
@@ -25,7 +25,7 @@ const LEVEL := [
 	"#                                             ########               XX             #####                      #",
 	"#                          ####               ########               XX                                        #",
 	"#                                             ########               XX                                        #",
-	"#  P       D                                                         XX          E           E                 #",
+	"#  P S     D                                                         XX          E           E          S      #",
 	"##################~~~~###################################        ##########~~~##################################",
 	"#########################################################^^^^^^^^###############################################",
 	"################################################################################################################",
@@ -34,7 +34,8 @@ const LEVEL := [
 
 ## Panneaux d'aide posés dans le niveau : [colonne, ligne, texte].
 const HINTS := [
-	[6, 12, "Frappe (J) au son de l'enclume : la Cadence fait chauffer le marteau"],
+	[6, 11, "Refrappe (J) pendant l'éclair blanc du marteau : la Cadence le fait chauffer"],
+	[2, 13, "Sanctuaire : haut pour changer d'arme"],
 	[19, 14, "Trempe (E) dans l'eau : refroidit l'arme, bonus de vitesse"],
 	[49, 8, "Glissade (C) sous le passage bas"],
 	[55, 12, "Ruée (Maj ou L) par-dessus les pics,"],
@@ -50,6 +51,7 @@ var camera: Camera2D
 var hud: Hud
 var water_rects: Array[Rect2] = []
 var hazard_rects: Array[Rect2] = []
+var sanctuary_rects: Array[Rect2] = []
 var solid_rects: Array[Rect2] = []
 var level_size := Vector2.ZERO
 
@@ -98,7 +100,8 @@ func _build_level() -> void:
 	var deco := LevelDraw.new()
 	add_child(deco)
 
-	# Blocs pleins : on fusionne les suites horizontales pour limiter les corps physiques.
+	# Blocs pleins : on fusionne les suites horizontales, puis les rectangles empilés
+	# de même largeur, pour éviter les jointures où le personnage accroche.
 	var body := StaticBody2D.new()
 	add_child(body)
 	for y in rows.size():
@@ -111,8 +114,7 @@ func _build_level() -> void:
 				while x < line.length() and line[x] == ch:
 					x += 1
 				var rect := Rect2(start * TILE, y * TILE, (x - start) * TILE, TILE)
-				_add_box(body, rect)
-				solid_rects.append(rect)
+				_merge_down(rect)
 				if ch == "^":
 					hazard_rects.append(Rect2(rect.position + Vector2(4, -6), Vector2(rect.size.x - 8, 14)))
 				continue
@@ -120,6 +122,8 @@ func _build_level() -> void:
 			match ch:
 				"~":
 					water_rects.append(Rect2(cell, Vector2(TILE, TILE)))
+				"S":
+					sanctuary_rects.append(Rect2(cell + Vector2(-TILE * 0.5, 0), Vector2(TILE * 2.0, TILE)))
 				"P":
 					player = Player.new()
 					player.position = cell + Vector2(TILE * 0.5, TILE - 28.0)
@@ -133,6 +137,8 @@ func _build_level() -> void:
 					d.position = cell + Vector2(TILE * 0.5, TILE - 32.0)
 					add_child(d)
 			x += 1
+	for rect in solid_rects:
+		_add_box(body, rect)
 
 	# Murs fragiles : un corps par colonne de X, qu'on peut briser.
 	var done := {}
@@ -151,10 +157,20 @@ func _build_level() -> void:
 
 	deco.water = water_rects
 	deco.hazards = hazard_rects
+	deco.sanctuaries = sanctuary_rects
 	deco.solids = solid_rects
 	for hnt in HINTS:
 		deco.hints.append([Vector2(hnt[0] * TILE, hnt[1] * TILE), hnt[2]])
 	add_child(player)
+
+
+func _merge_down(rect: Rect2) -> void:
+	for i in solid_rects.size():
+		var r := solid_rects[i]
+		if r.position.x == rect.position.x and r.size.x == rect.size.x and r.end.y == rect.position.y:
+			solid_rects[i] = r.merge(rect)
+			return
+	solid_rects.append(rect)
 
 
 func _add_box(body: StaticBody2D, rect: Rect2) -> void:
