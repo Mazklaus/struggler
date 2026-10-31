@@ -1,6 +1,6 @@
 extends Node
 ## Test automatique du monde, sans écran : godot --headless res://tests/world_test.tscn
-## Nouvelle partie dans les galeries de Hautfer : passages, repos, nuit, esprits, brume, échafaudages,
+## Nouvelle partie dans les galeries de Hautfer : passages, repos, nuit, esprits, brume, treuil,
 ## mort et ombre de marqué, marteau de Gerold, mur fissuré, sauvegarde.
 
 var game: Game
@@ -125,20 +125,20 @@ func _run() -> void:
 	await _wait(0.6)
 	_check(game.room.id == "h02_corps" and p.position.x < 6 * 32, "le passage mène à la galerie des corps")
 
-	# Les échafaudages de la lampisterie se traversent par dessous
-	game._load_room("h03_lampisterie", _cell(20, 106))
+	# Le treuil du puits, sur la place, se traverse par dessous
+	game._load_room("h15_place", _cell(64, 18))
 	await _wait(0.5)
 	var y0 := p.position.y
-	Input.action_press("saut")
-	await _wait(0.5)
-	Input.action_release("saut")
-	await _wait(0.4)
-	_check(p.is_on_floor() and p.position.y < y0 - 2 * 32, "on monte sur l'échafaudage en sautant à travers (%.0f -> %.0f)" % [y0, p.position.y])
+	p.velocity.y = -820.0   # un élan comme celui d'un trou dans le sol
+	await _wait(1.0)
+	_check(p.is_on_floor() and p.position.y < y0 - 2 * 32, "on monte sur le treuil en sautant à travers (%.0f -> %.0f)" % [y0, p.position.y])
 
-	# Repos au brasier : sauvegarde
+	# Repos au brasier de la lampisterie : sauvegarde
+	game._load_room("h03_lampisterie", _cell(20, 106))
+	await _wait(0.2)
 	for r in _find(Rampant):
 		r.queue_free()
-	p.position = _cell(26, 106)
+	p.position = _cell(20, 106)
 	await _wait(0.4)
 	await _tap("haut")
 	await _wait(0.05)

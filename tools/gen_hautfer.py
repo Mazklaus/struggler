@@ -3,7 +3,7 @@
 
 Le plan vient de la carte détaillée de Hautfer et de la Lande. Une case du plan vaut un écran,
 soit 40 × 22 cases de 32 pixels. Chaque salle est construite ici avec quelques outils
-(murs, plateformes, passages, échafaudages), puis écrite en caractères comme les autres salles.
+(murs, corniches, éboulis, passages), puis écrite en caractères comme les autres salles.
 
 Usage : python3 tools/gen_hautfer.py   (réécrit scripts/rooms_hautfer.gd)
 On peut ensuite retoucher les salles à la main dans le .gd ; relancer ce script écrase ces retouches.
@@ -76,13 +76,53 @@ class R:
         self.doors[digit] = dest
         return self
 
-    def climb(self, x, y_low, y_high, width=8):
-        """Échafaudages traversables par dessous, empilés toutes les 3 cases (de y_low à y_high)."""
-        y = y_low
-        while y >= y_high:
-            self.plat(x, y, width, "-")
-            y -= 3
+    def _jit(self, *k):
+        """Petit bruit déterministe (0, 1 ou 2) pour casser les formes trop régulières."""
+        h = 0
+        for v in (self.id,) + k:
+            for ch in str(v):
+                h = (h * 131 + ord(ch)) % 1000003
+        return h % 3
+
+    def wl(self, top, end, depth=3):
+        """Corniche de roche accrochée au mur gauche (jusqu'à la colonne end) ;
+        le dessous s'épaissit vers le mur, de façon irrégulière."""
+        self.fill(2, top, end, top, "#")
+        for k in range(1, depth + 1):
+            self.fill(2, top + k, end - 2 * k - self._jit(top, k), top + k, "#")
         return self
+
+    def wr(self, top, start, depth=3):
+        """Corniche de roche accrochée au mur droit (à partir de la colonne start)."""
+        self.fill(start, top, self.W - 3, top, "#")
+        for k in range(1, depth + 1):
+            self.fill(start + 2 * k + self._jit(top, k), top + k, self.W - 3, top + k, "#")
+        return self
+
+    def rough(self, y0, y1, depth=2):
+        """Parois irrégulières : des bosses de roche le long des deux murs, entre y0 et y1."""
+        for y in range(y0, y1 + 1):
+            for side in (0, 1):
+                d = min(depth, (self._jit(y // 2, side) + self._jit(y // 3, side, 1)) // 2 + self._jit(y // 5, side, 2) // 2)
+                for i in range(d):
+                    x = 2 + i if side == 0 else self.W - 3 - i
+                    if self.g[y][x] == " " and all(not self.g[yy][0 if side == 0 else self.W - 1].isdigit()
+                                                    for yy in range(max(0, y - 1), min(self.H, y + 5))):
+                        self.g[y][x] = "#"
+        return self
+
+    def mound(self, steps, floor=None):
+        """Un tas (éboulis, gradins, piles) : [(x0, x1, haut), ...], plein jusqu'au sol."""
+        floor = self.H - 4 if floor is None else floor
+        for x0, x1, y in steps:
+            self.fill(x0, y, x1, floor, "#")
+        return self
+
+    def spot(self, x, y, s):
+        """Pose un objet ou un ennemi sur une case vide (vérifié)."""
+        for i in range(len(s)):
+            assert self.g[y][x + i] == " ", (self.id, x + i, y, self.g[y][x + i])
+        return self.put(x, y, s)
 
     def rows(self):
         return ["".join(r) for r in self.g]
@@ -110,9 +150,11 @@ def build():
     r.side("W", 0, "1", ["h22_belvedere", "1"], ledge=26)
     r.side("E", 1, "2", ["h15_place", "1"])
     r.fill(0, 19, 25, 19, "#")                   # le plancher de la chambre
-    r.climb(28, 38, 23).plat(28, 21, 8, "-")
-    r.put(8, 18, "l").put(14, 18, "c")
-    r.fill(8, 38, 12, 40, "#").put(16, 40, "f")  # l'établi de l'atelier
+    # l'escalier de la maison, en lacets, dont il manque des marches
+    r.plat(22, 38, 4).plat(29, 35, 4).plat(23, 32, 4).plat(30, 29, 4)
+    r.plat(24, 26, 4).plat(31, 25, 7).plat(26, 22, 3)
+    r.fill(8, 38, 12, 40, "#").spot(10, 37, "f")  # l'établi de l'atelier
+    r.spot(8, 18, "l").spot(14, 18, "c")
     r.hint(4, 12, "La chambre d'Ilse.")
     r.hint(4, 33, "L'atelier de Gerold.")
 
@@ -133,9 +175,13 @@ def build():
     r = mk("h18_fond_puits", "Le fond du puits", 1, 1)
     r.bottom(18, "1", ["h06_roulage", "2"])
     r.top(18, "2", ["h15_place", "3"])
-    r.climb(21, 15, 6)
-    r.put(6, 18, "c").put(30, 18, "R")
-    r.hint(4, 10, "Une corde pend encore.")
+    # la voûte de la cave, percée par le cylindre du puits (colonnes 17 à 23)
+    r.fill(2, 2, 16, 7, "#").fill(24, 2, 37, 7, "#").fill(2, 8, 9, 8, "#").fill(31, 8, 37, 9, "#")
+    r.plat(17, 7, 2).plat(21, 4, 3)              # les pierres déchaussées du cuvelage
+    r.plat(21, 10, 6, "-")                       # la poutre du treuil, coincée en travers
+    r.mound([(22, 27, 16), (28, 36, 13)])        # l'éboulis de maçonnerie tombée du puits
+    r.spot(6, 18, "c").spot(33, 12, "R")
+    r.hint(4, 12, "Une corde pend encore.")
 
     r = mk("h12_rue", "La rue de la Forge", 3, 1)
     r.side("W", 0, "1", ["h15_place", "2"])
@@ -151,11 +197,15 @@ def build():
 
     r = mk("h17_maison_commune", "La maison commune", 2, 1)
     r.top(58, "1", ["h12_rue", "3"])
-    r.climb(61, 16, 4)
+    # le toit enfoncé : le puits de jour (colonnes 57 à 63) et les débris de l'étage
+    r.fill(46, 2, 56, 7, "#").fill(64, 2, 73, 7, "#")
+    r.plat(57, 7, 2).plat(61, 4, 3)
+    r.plat(61, 10, 6, "-")                       # la poutre maîtresse, tombée en biais
+    r.mound([(62, 68, 16), (69, 77, 13)])        # l'étage effondré, bancs et tables empilés
     for x in (6, 9, 12, 16, 22, 25, 30, 34, 40, 44, 50):
-        r.put(x, 18, "c")
-    r.put(18, 18, "R").put(46, 18, "R").put(20, 8, "G").put(44, 6, "G").put(70, 12, "G")
-    r.plat(14, 16, 5).plat(4, 13, 8).put(6, 12, "f")
+        r.spot(x, 18, "c")
+    r.spot(18, 18, "R").spot(46, 18, "R").spot(20, 8, "G").spot(44, 6, "G").spot(72, 11, "G")
+    r.plat(14, 16, 5).plat(4, 13, 8).spot(6, 12, "f")
     r.hint(10, 6, "Les murs sont couverts de visages.")
     r.hint(10, 7, "La nuit, les morts parlent ici.")
 
@@ -171,78 +221,103 @@ def build():
     r.side("W", 0, "1", ["h13_forge", "2"])
     r.side("E", 0, "2", ["h16_clocher", "1"])
     r.top(58, "3", ["h08_monte_charge", "1"])
-    r.climb(61, 16, 4)
     r.bottom(98, "4", ["h23_grand_puits", "1"], grate=True)
     r.fill(96, 18, 97, 18, "w").fill(102, 18, 103, 18, "w")
-    r.plat(101, 15, 8, "-")
-    r.fill(20, 13, 34, 13, "#").fill(26, 9, 27, 12, "#")    # le chevalement effondré
+    r.plat(101, 15, 8, "-")                      # le chevalement du Grand Puits
+    r.fill(20, 13, 34, 13, "#").fill(26, 10, 27, 12, "#")   # le chevalement effondré
+    # le terril : les déblais montent jusqu'au monte-charge, sur un boisage où passent les berlines
+    r.mound([(35, 42, 10), (43, 50, 7), (51, 58, 6)], floor=15)
     r.fill(112, 2, 117, 10, "#")
-    r.put(16, 18, "E").put(44, 18, "E").put(80, 18, "E").put(40, 6, "G").put(86, 8, "G")
-    r.plat(14, 16, 5).put(24, 12, "f")
+    r.spot(16, 18, "E").spot(44, 18, "E").spot(80, 18, "E").spot(40, 6, "G").spot(86, 8, "G")
+    r.plat(14, 16, 5).spot(24, 12, "f")
     r.hint(88, 10, "Le Grand Puits. La grille est pourrie :")
     r.hint(88, 11, "attaque lourde chargée.")
-    r.hint(50, 2, "Le monte-charge.")
+    r.hint(50, 3, "Le monte-charge, en haut du terril.")
 
     r = mk("h08_monte_charge", "Le monte-charge", 1, 1)
     r.bottom(18, "1", ["h21_carreau", "3"])
-    r.plat(21, 15, 8, "-")
-    r.fill(14, 2, 25, 5, "#")                   # la cabine, bloquée tout en haut
+    r.mound([(22, 28, 16)])                      # le contrepoids, tombé à côté du puits
+    r.fill(14, 2, 25, 5, "#")                    # la cabine, bloquée tout en haut
     r.hint(4, 9, "La cabine est bloquée tout en haut du câble.")
     r.hint(4, 10, "Le levier doit être là-haut, sur la route.")
 
     r = mk("h16_clocher", "Le clocher de la mine", 1, 2)
     r.side("W", 1, "1", ["h21_carreau", "2"])
-    r.climb(14, 38, 8, width=10)
-    r.fill(14, 3, 25, 5, "#").put(19, 6, "f")   # la cloche, fêlée
-    r.put(28, 20, "G").put(10, 12, "G")
+    # les planchers du clocher, chacun percé d'une trappe, et ce qui reste des escaliers
+    r.fill(2, 35, 31, 35, "#").fill(8, 29, 37, 29, "#").fill(2, 23, 30, 23, "#")
+    r.fill(7, 17, 37, 17, "#").fill(2, 11, 31, 11, "#")
+    r.mound([(32, 35, 38)], floor=40).mound([(4, 7, 32)], floor=34)
+    r.mound([(31, 34, 26)], floor=28).mound([(3, 6, 20)], floor=22).mound([(31, 35, 14)], floor=16)
+    r.fill(14, 3, 25, 5, "#").spot(19, 10, "f")  # la cloche, fêlée
+    r.spot(20, 20, "G").spot(12, 14, "G")
     r.hint(4, 30, "La cloche qui sonnait le début et la fin du travail.")
 
     # ======================================================================== les galeries
     r = mk("h06_roulage", "La galerie de roulage", 5, 1)
     r.side("E", 0, "1", ["h07_wagonnets", "1"])
     r.top(98, "2", ["h18_fond_puits", "1"])
-    r.climb(101, 16, 4)
+    # sous le puits du bourg : la voûte crevée, le cuvelage et l'éboulis tombé du dessus
+    r.fill(86, 2, 96, 7, "#").fill(104, 2, 114, 7, "#").fill(86, 8, 90, 8, "#").fill(110, 8, 114, 8, "#")
+    r.plat(97, 7, 2).plat(101, 4, 3)
+    r.plat(101, 10, 6, "-")                      # un chapeau de boisage, tombé en travers
+    r.mound([(102, 107, 16), (108, 114, 13), (115, 120, 16)])
     r.fill(30, 17, 33, 18, "#").fill(56, 18, 60, 18, "^").fill(130, 18, 134, 18, "~")
     r.fill(150, 16, 155, 18, "#").fill(170, 18, 173, 18, "^")
-    r.fill(10, 8, 22, 8, "#").put(14, 7, "f").put(18, 7, "f")      # la corniche
+    r.fill(10, 8, 22, 8, "#").spot(14, 7, "f").spot(18, 7, "f")      # la corniche
     r.plat(26, 16, 6, "=").plat(20, 13, 5, "=").plat(26, 10, 5, "=")
-    r.put(40, 18, "R").put(120, 18, "R").put(160, 18, "R").put(70, 10, "G").put(180, 8, "G").put(130, 6, "G")
-    r.put(64, 18, "c").put(140, 18, "cc")
-    r.hint(84, 10, "Le puits du bourg, au-dessus.")
+    r.spot(40, 18, "R").spot(126, 18, "R").spot(160, 18, "R").spot(70, 10, "G").spot(180, 8, "G").spot(130, 6, "G")
+    r.spot(64, 18, "c").spot(140, 18, "cc")
+    r.hint(80, 11, "Le puits du bourg, au-dessus.")
     r.hint(10, 13, "La nuit, la brume se fige.")
 
     r = mk("h07_wagonnets", "La chambre des wagonnets", 2, 2)
     r.side("W", 0, "1", ["h06_roulage", "1"])
     r.side("E", 0, "2", ["h03_lampisterie", "1"])
-    r.fill(0, 19, 35, 21, "#").fill(44, 19, 79, 21, "#")   # le plancher du haut, troué au milieu
-    r.climb(40, 38, 23).plat(40, 21, 8, "-")
+    r.fill(0, 19, 37, 21, "#").fill(43, 19, 79, 21, "#")   # le plancher du haut, troué au milieu
+    # tout ce qui est tombé par le trou du plancher : wagonnets, rails et roche, en tas sous le trou
+    r.mound([(28, 30, 36), (31, 33, 33), (34, 36, 30), (37, 38, 27), (39, 40, 24), (41, 42, 22),
+             (43, 47, 25), (48, 51, 28), (52, 55, 31), (56, 59, 34), (60, 63, 37)], floor=40)
     r.bottom(18, "3", ["h11_boisage", "1"])
-    r.plat(21, 37, 8, "-")
-    r.fill(52, 39, 60, 40, "#").fill(54, 37, 58, 38, "#")  # un wagonnet renversé
-    r.put(24, 18, "R").put(62, 40, "R").put(30, 30, "G").put(66, 8, "G")
+    r.mound([(22, 27, 38)], floor=40)            # un wagonnet, au bord du puits
+    r.spot(24, 18, "R").spot(70, 40, "R").spot(14, 30, "G").spot(66, 8, "G")
     r.hint(4, 12, "Vers le puits du bourg")
     r.hint(60, 12, "Vers la lampisterie")
     r.hint(24, 34, "L'atelier du boisage, en bas")
 
     r = mk("h11_boisage", "L'atelier du boisage", 2, 1)
     r.top(18, "1", ["h07_wagonnets", "3"])
-    r.climb(21, 16, 4)
-    r.fill(44, 14, 60, 14, "#").put(52, 13, "k")   # le râtelier des pics
-    r.plat(36, 17, 5).plat(64, 16, 6)
-    r.put(30, 18, "R").put(70, 18, "R").put(56, 6, "G")
+    # les piles de bois de mine, et la chèvre qui servait à les lever jusqu'au puits
+    r.mound([(24, 27, 18), (28, 37, 15), (31, 36, 12), (33, 36, 9)])
+    r.plat(21, 6, 10, "-")
+    r.fill(44, 14, 60, 14, "#").spot(52, 13, "k")   # le râtelier des pics
+    r.plat(40, 17, 3).plat(64, 16, 6)
+    r.spot(46, 18, "R").spot(70, 18, "R").spot(56, 6, "G")
     r.hint(44, 10, "Les pics des mineurs morts, au râtelier.")
 
     r = mk("h03_lampisterie", "Le puits de la lampisterie", 1, 5)
-    r.side("W", 0, "1", ["h07_wagonnets", "2"], ledge=10)
+    r.side("W", 0, "1", ["h07_wagonnets", "2"], ledge=12)
     r.side("E", 3, "2", ["h24_boiseurs", "1"], ledge=10)
     r.side("W", 4, "3", ["h02_corps", "2"])
-    r.climb(14, 104, 20, width=12)
-    r.put(26, 106, "F")
-    r.plat(30, 64, 8).put(34, 63, "R").put(32, 63, "f")
-    r.plat(2, 46, 8).put(5, 45, "f")
-    r.put(8, 90, "G").put(30, 70, "G").put(8, 40, "G").put(30, 24, "G")
-    r.hint(18, 100, "Brasier : haut pour se reposer.")
-    r.hint(4, 96, "Les échafaudages se traversent par dessous.")
+    # en bas, la lampisterie : caisses de lampes, brasier, et le puits qui part en corniches
+    r.mound([(24, 28, 105), (29, 37, 103)])
+    r.spot(20, 106, "F")
+    r.wl(100, 25, 1).wr(97, 29, 1).wl(94, 25, 1).wr(91, 28, 1).wl(88, 26, 0)
+    # au milieu, un pilier de roche coupe le puits en deux cheminées
+    r.fill(14, 50, 24, 82, "#")
+    for y in (82, 76, 70, 64, 58, 52):
+        r.fill(25, y, 28, y, "#")                # les prises sur le flanc du pilier
+    for y in (79, 73, 61, 55):
+        r.wr(y, 32, 1)                           # et sur la paroi d'en face
+    r.wr(67, 30, 1).spot(34, 66, "R").spot(32, 66, "f")   # la niche des lampistes
+    r.wl(56, 8, 1).fill(11, 53, 13, 53, "#").spot(5, 55, "f")   # la cheminée de gauche, en cul-de-sac
+    # en haut, deux écailles de roche décollées de la paroi, en lacets jusqu'à la galerie
+    r.wl(47, 10, 1)
+    for x0, x1, y in ((14, 18, 44), (17, 21, 41), (22, 26, 38), (27, 31, 35), (32, 37, 32),
+                      (26, 30, 29), (21, 25, 26), (16, 20, 23), (12, 15, 21)):
+        r.fill(x0, y, x1, y, "#").fill(x0 + 1, y + 1, x1 - 1, y + 1, "#")
+    r.rough(20, 102, 1)
+    r.spot(20, 92, "G").spot(30, 71, "G").spot(20, 38, "G").spot(32, 20, "G")
+    r.hint(12, 103, "Brasier : haut pour se reposer.")
 
     r = mk("h24_boiseurs", "Le passage des boiseurs", 1, 1)
     r.side("W", 0, "1", ["h03_lampisterie", "2"])
@@ -254,8 +329,18 @@ def build():
     r = mk("h23_grand_puits", "Le Grand Puits", 1, 3)
     r.top(18, "1", ["h21_carreau", "4"])
     r.bottom(18, "2", ["h19_fosse", "1"])
-    r.climb(21, 59, 5)
-    r.put(6, 30, "G").put(32, 46, "G").put(8, 62, "R").put(32, 62, "c")
+    # les parois de chair, la cage restée coincée à mi-hauteur ; rien ne gêne la chute (colonnes 19-20)
+    r.plat(21, 59, 7).mound([(28, 33, 61)])      # le palier du fond
+    LS = [(56, 14, 18), (53, 2, 10), (50, 12, 16), (35, 3, 7), (32, 12, 17), (17, 14, 18),
+         (14, 2, 11), (11, 13, 17), (6, 15, 18)]
+    RS = [(47, 21, 26), (44, 28, 37), (41, 23, 26), (29, 21, 25), (26, 26, 31), (23, 33, 37),
+         (20, 22, 29), (9, 21, 26)]
+    for y, x0, x1 in LS + RS:
+        r.fill(x0, y, x1, y, "#")
+    r.fill(2, 54, 7, 54, "#").fill(2, 36, 4, 36, "#").fill(2, 15, 8, 15, "#").fill(34, 45, 37, 45, "#")
+    r.fill(10, 38, 18, 40, "#")                  # la cage
+    r.rough(4, 60, 1)
+    r.spot(6, 30, "G").spot(32, 47, "G").spot(8, 62, "R").spot(24, 62, "c")
     r.hint(26, 2, "Les parois sont tapissées de chair.")
 
     r = mk("h19_fosse", "La fosse du Contremaître", 2, 2)
@@ -263,12 +348,18 @@ def build():
     r.top(58, "1", ["h23_grand_puits", "2"])
     r.side("W", 1, "2", ["h24_boiseurs", "2"], ledge=3)
     r.side("E", 0, "3", ["h20_extraction", "1"], ledge=11)
-    r.climb(61, 38, 5)
+    # les gradins de la fosse montent vers la galerie d'extraction
+    r.mound([(41, 45, 38), (46, 48, 35), (49, 53, 33), (54, 57, 30), (58, 62, 27), (63, 65, 24), (66, 68, 21)],
+            floor=40)
+    # au-dessus, l'orifice du Grand Puits dans la voûte, et les racines de chair qui y mènent
+    r.fill(40, 2, 56, 8, "#").fill(64, 2, 77, 7, "#")
+    r.plat(57, 7, 2).plat(61, 4, 3)
+    r.plat(62, 16, 5).plat(54, 13, 5).plat(61, 10, 6)
     r.plat(6, 38, 8, "-").plat(16, 35, 8, "-").plat(6, 32, 8, "-")
-    for x in (5, 9, 14, 22, 40, 46, 52, 72, 75):
-        r.put(x, 40, "c")
-    r.put(32, 40, "B")
-    r.hint(66, 16, "La galerie d'extraction")
+    for x in (5, 9, 14, 22, 40):
+        r.spot(x, 40, "c")
+    r.spot(32, 40, "B")
+    r.hint(66, 14, "La galerie d'extraction")
 
     r = mk("h20_extraction", "La galerie d'extraction", 2, 1)
     r.side("W", 0, "1", ["h19_fosse", "3"])
@@ -284,22 +375,22 @@ def build():
     r.side("W", 0, "1", ["h04_etais", "1"])
     r.side("E", 0, "2", ["h02_corps", "1"])
     r.bottom(18, "3", ["h05_veine_morte", "1"], grate=True)
-    r.plat(21, 15, 8, "-")
+    r.mound([(22, 27, 16)])                     # un bloc tombé de la voûte
     r.fill(44, 2, 48, 17, "#")                  # l'éboulis : on glisse dessous
-    r.put(10, 18, "P").put(13, 18, "ccc").put(26, 18, "cc").put(34, 18, "c").put(58, 18, "c").put(66, 18, "R")
-    r.plat(56, 16, 3).fill(60, 13, 70, 13, "#").put(64, 12, "f")
-    r.put(30, 8, "G").put(62, 6, "G")
+    r.spot(10, 18, "P").spot(13, 18, "ccc").spot(30, 18, "cc").spot(36, 18, "c").spot(58, 18, "c").spot(66, 18, "R")
+    r.plat(56, 16, 3).fill(60, 13, 70, 13, "#").spot(64, 12, "f")
+    r.spot(30, 8, "G").spot(62, 6, "G")
     r.hint(36, 14, "Glissade (C ou RT) sous l'éboulis")
 
     r = mk("h02_corps", "La galerie des corps", 2, 1)
     r.side("W", 0, "1", ["h01_effondrement", "2"])
     r.side("E", 0, "2", ["h03_lampisterie", "3"])
     r.bottom(18, "3", ["h09_chapelle", "1"])
-    r.plat(21, 15, 8, "-")
+    r.mound([(22, 27, 16)])                     # l'autel des mineurs, renversé
     r.fill(34, 18, 37, 18, "^").fill(46, 16, 52, 16, "#").fill(58, 17, 62, 18, "#")
     for x in (6, 9, 28, 30, 42, 66):
-        r.put(x, 18, "c")
-    r.put(26, 18, "R").put(54, 18, "R").put(40, 8, "G")
+        r.spot(x, 18, "c")
+    r.spot(32, 18, "R").spot(54, 18, "R").spot(40, 8, "G")
     r.hint(10, 13, "Une chapelle, en contrebas.")
 
     r = mk("h04_etais", "Les étais", 2, 1)
@@ -314,14 +405,21 @@ def build():
 
     r = mk("h05_veine_morte", "La veine morte", 1, 1)
     r.top(18, "1", ["h01_effondrement", "3"])
-    r.climb(21, 16, 4)
-    r.plat(4, 16, 8).put(7, 15, "v")
-    r.put(30, 18, "R")
+    # un pilier laissé par les mineurs porte la corniche ; on monte dans la fente derrière lui
+    r.fill(2, 2, 37, 3, "#").fill(2, 4, 14, 6, "#").fill(34, 4, 37, 4, "#")
+    r.fill(17, 2, 22, 3, " ")
+    r.fill(21, 6, 30, 6, "#").fill(27, 7, 30, 18, "#")
+    r.fill(34, 16, 37, 16, "#").fill(31, 13, 33, 13, "#").fill(34, 10, 37, 10, "#").fill(31, 7, 33, 7, "#")
+    r.mound([(4, 11, 16)]).spot(7, 15, "v")
+    r.spot(24, 18, "R")
     r.hint(4, 10, "Une veine abandonnée.")
 
     r = mk("h09_chapelle", "La chapelle des mineurs", 1, 1)
     r.top(18, "1", ["h02_corps", "3"])
-    r.climb(21, 16, 4)
+    # la voûte, l'escalier taillé dans la roche et la tribune de bois
+    r.fill(2, 2, 37, 3, "#").fill(17, 2, 22, 3, " ").fill(2, 4, 8, 5, "#")
+    r.mound([(22, 25, 16), (26, 28, 13), (29, 32, 10), (33, 37, 7)])
+    r.plat(23, 7, 10, "-").fill(21, 6, 23, 6, "#")   # la tribune, et le reliquaire posé au bord
     r.fill(4, 12, 12, 18, "#")   # la porte scellée
     r.hint(2, 9, "Une porte scellée par un signe qu'on ne sait pas lire.")
     r.hint(2, 10, "Des béquilles ont usé la pierre du seuil.")

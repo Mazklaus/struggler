@@ -53,8 +53,8 @@ d'attaque lourde ni de Cadence. Il n'a pas non plus la **Ruée**, qu'il retrouve
 dans la Lande. Il faut remonter vers la surface. Une case du plan vaut un écran (40 × 22 cases de 32 px) :
 
 1. **L'effondrement** : on glisse sous l'éboulis. À l'ouest, **les étais** et un mur fissuré.
-2. **La galerie des corps**, puis **le puits de la lampisterie** : premier brasier, et une
-   longue montée par les **échafaudages** (on les traverse par dessous en sautant).
+2. **La galerie des corps**, puis **le puits de la lampisterie** : premier brasier, puis une
+   longue montée en corniches, autour d'un pilier qui coupe le puits en deux cheminées.
 3. **La chambre des wagonnets**, carrefour des galeries ; en bas, **l'atelier du boisage**
    et les pics des mineurs.
 4. **La galerie de roulage**, jusqu'au **fond du puits** du bourg : on remonte la corde.
@@ -66,6 +66,12 @@ dans la Lande. Il faut remonter vers la surface. Une case du plan vaut un écran
 7. **Le Grand Puits**, puis **la fosse du Contremaître**. Une fois le boss vaincu, la
    **galerie d'extraction** mène vers la Lande (prochaine étape), et le passage des boiseurs
    ramène au brasier de la lampisterie.
+
+Les montées passent par la forme même des salles, jamais par des échelles posées là : le
+tas de wagonnets tombés par le trou du plancher, les piles de bois du boisage, l'escalier en
+lacets de la maison de Gerold, les planchers à trappes du clocher, le terril qui monte au
+monte-charge, les gradins de la fosse, le pilier de la veine morte. Les seules plateformes
+qu'on traverse par dessous (`-`) sont des bois : treuil, poutres, chevalement, tribune.
 
 Restent fermés pour plus tard : la galerie noyée (Plongée), la chapelle des mineurs (Vue
 astrale) et le levier du monte-charge (depuis la Route des pèlerins). La nuit, la brume se
@@ -159,7 +165,7 @@ godot --headless res://tests/boss_test.tscn
 Le premier pilote Wendel dans la salle d'essai : déplacements, Cadence, Frappe à blanc,
 trempe, parcours, soldat, contre, Panser, repos et changement d'arme, Entaille, glissade au
 mur. Le second joue une nouvelle partie : passages entre salles, repos et sauvegarde, nuit et
-esprits, brume, marteau de Gerold, échafaudages, mur éboulé, lettre d'Ilse, mort et ombre de marqué. Le troisième vérifie le
-Contremaître, de la grille du Grand Puits jusqu'à la remontée par les échafaudages.
+esprits, brume, marteau de Gerold, treuil traversé par dessous, mur éboulé, lettre d'Ilse, mort et ombre de marqué. Le troisième vérifie le
+Contremaître, de la grille du Grand Puits jusqu'à la remontée par la cheminée de la voûte.
 
 Fan-game privé, non commercial, d'après *Berserk* de Kentaro Miura.

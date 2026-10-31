@@ -179,10 +179,10 @@ func _run() -> void:
 	await _tap_ui("saut")
 	await _wait(0.2)
 
-	# On remonte par les échafaudages, dans le Grand Puits
+	# On remonte par la cheminée de la voûte, dans le Grand Puits
 	p.max_hp = 7
 	p.hp = 7
-	p.position = _cell(61, 4)
+	p.position = _cell(61, 2)
 	p.velocity = Vector2.ZERO
 	await _wait(0.4)
 	Input.action_press("saut")
@@ -196,7 +196,7 @@ func _run() -> void:
 	Input.action_release("droite")
 	await _wait(0.8)
 	_check(game.room.id == "h23_grand_puits" and p.is_on_floor() and p.position.y < 59 * 32,
-		"on remonte de la fosse sur l'échafaudage du Grand Puits (y=%.0f)" % p.position.y)
+		"on remonte de la fosse sur le palier du Grand Puits (y=%.0f)" % p.position.y)
 
 	# Le boss vaincu ne revient pas
 	game._load_room("h19_fosse", _cell(10, 40))

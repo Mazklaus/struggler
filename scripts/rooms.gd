@@ -9,7 +9,7 @@ extends RefCounted
 ##   S  cercle de sel : repos, sauvegarde, change d'arme ; les esprits n'y entrent pas
 ##   F  brasier : repos et sauvegarde, mais il ne protège pas des esprits
 ##   1-9  passage vers une autre salle (voir "doors" : chiffre -> [salle, chiffre d'arrivée])
-##   -  échafaudage : une plateforme qu'on traverse par dessous (toujours là)
+##   -  bois (treuil, poutre, tribune) : une plateforme qu'on traverse par dessous (toujours là)
 ##   P  départ d'une nouvelle partie   R  mineur rampant   E  soldat   D  mannequin
 ##   G  point d'apparition des esprits la nuit      g  esprit présent même le jour
 ##   c  corps (décor)            B  boss de la salle (voir "boss"), absent une fois vaincu
