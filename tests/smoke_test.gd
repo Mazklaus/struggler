@@ -8,6 +8,7 @@ var fails := 0
 
 
 func _ready() -> void:
+	Game.debug_room = Rooms.TEST_ROOM
 	game = load("res://scenes/main.tscn").instantiate()
 	add_child(game)
 	p = game.player
@@ -31,6 +32,21 @@ func _tap(action: String) -> void:
 	await get_tree().physics_frame
 	await get_tree().physics_frame
 	Input.action_release(action)
+
+
+## Les menus lisent les touches à chaque image affichée, pas à chaque pas de physique.
+func _tap_ui(action: String) -> void:
+	var e := InputEventAction.new()
+	e.action = action
+	e.pressed = true
+	Input.parse_input_event(e)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var r := InputEventAction.new()
+	r.action = action
+	r.pressed = false
+	Input.parse_input_event(r)
+	await get_tree().process_frame
 
 
 func _until_window() -> void:
@@ -164,6 +180,7 @@ func _run() -> void:
 	var countered := false
 	for i in 2400:
 		await get_tree().physics_frame
+		p.hp = p.max_hp   # pas de mort ici : elle ramènerait au dernier repos
 		if p.state != Player.S.NORMAL or p._invuln > 0.0:
 			continue
 		if soldier.state == Soldier.S.CHASE or soldier.state == Soldier.S.PATROL:
@@ -202,7 +219,12 @@ func _run() -> void:
 	await _wait(0.5)
 	await _tap("haut")
 	await _wait(0.1)
-	_check(p.weapon == Player.W.PICS, "le sanctuaire change l'arme pour les Pics")
+	var rested := game.mode == Game.M.REST
+	await _tap_ui("saut")      # « Changer d'arme »
+	await _wait(0.1)
+	await _tap_ui("panser")    # se relever
+	await _wait(0.1)
+	_check(rested and p.weapon == Player.W.PICS and game.mode == Game.M.PLAY, "le repos au cercle de sel change l'arme pour les Pics")
 	var dummy: Dummy
 	for d in get_tree().get_nodes_in_group("hittable"):
 		if d is Dummy:

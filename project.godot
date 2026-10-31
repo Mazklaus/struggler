@@ -4,14 +4,15 @@ config_version=5
 
 [application]
 
-config/name="Struggler - prototype gris"
-config/description="Prototype gris : déplacements, Cadence, Rage, Panser, un ennemi."
+config/name="Struggler - tranche verticale"
+config/description="Tranche verticale en blocs gris : galeries de Hautfer, cycle de la marque, cercles de sel."
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.6")
 
 [autoload]
 
 Sfx="*res://scripts/sfx.gd"
+World="*res://scripts/world.gd"
 
 [display]
 

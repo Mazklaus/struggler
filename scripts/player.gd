@@ -7,6 +7,9 @@ enum S { NORMAL, ATTACK, CHARGE, DASH, SLIDE, PARRY, HEAL, QUENCH, HURT, DEAD }
 enum W { MARTEAU, PICS }
 
 const WEAPON_NAMES := ["Marteau de Gerold", "Pics de mineur"]
+## Avant la forge de Hautfer, Wendel n'a que le tronçon de la masse de Doldrey :
+## coups légers seulement, ni attaque lourde ni Cadence.
+const BROKEN_MACE := "Masse brisée"
 
 # --- Déplacements -----------------------------------------------------------
 @export var run_speed := 270.0
@@ -79,6 +82,7 @@ var _was_on_floor := false
 var _wall_dir := 0          # mur contre lequel Wendel glisse (Pics), 0 = aucun
 var _wall_lock := 0.0       # après un saut de mur, la direction est brièvement imposée
 var _air_bond := true
+var _death_reported := false
 
 # Attaque en cours
 var _atk := {}
@@ -183,10 +187,12 @@ func _st_normal(delta: float) -> void:
 	elif Input.is_action_just_pressed("lourde"):
 		if weapon == W.PICS:
 			_start_bond()
-		else:
+		elif World.has("lourde"):
 			_set_state(S.CHARGE)
 			_charge = 0.0
-	elif Input.is_action_just_pressed("ruee"):
+		else:
+			Game.inst.fx.text(position + Vector2(0, -50), "La masse brisée ne se charge pas", Color(0.7, 0.7, 0.7), 14)
+	elif Input.is_action_just_pressed("ruee") and World.has("ruee"):
 		_try_dash()
 	elif Input.is_action_just_pressed("glissade") and is_on_floor():
 		_start_slide()
@@ -198,8 +204,11 @@ func _st_normal(delta: float) -> void:
 		_try_heal()
 	elif Input.is_action_just_pressed("trempe"):
 		_try_quench()
-	elif Input.is_action_just_pressed("haut") and is_on_floor() and _at_sanctuary():
-		_switch_weapon()
+	elif Input.is_action_just_pressed("haut") and is_on_floor():
+		var rest: Dictionary = Game.inst.room.rest_at(get_hurt_rect())
+		if not rest.is_empty():
+			velocity = Vector2.ZERO
+			Game.inst.open_rest(rest.kind)
 
 
 func _st_attack(delta: float) -> void:
@@ -227,14 +236,14 @@ func _st_attack(delta: float) -> void:
 
 	var total: float = a.windup + a.active + a.recovery
 	# La ruée annule la fin d'une frappe, comme dans Silksong.
-	if t >= a.windup + a.active and Input.is_action_just_pressed("ruee"):
+	if t >= a.windup + a.active and Input.is_action_just_pressed("ruee") and World.has("ruee"):
 		_last_atk_end = _now()
 		_try_dash()
 		return
 	if t >= total:
 		_last_atk_end = _now()
 		_set_state(S.NORMAL)
-		if weapon == W.MARTEAU:
+		if weapon == W.MARTEAU and World.has("lourde"):
 			_open_window()
 		if _attack_buf > 0.0:
 			_start_attack(_attack_buf_dir, _attack_buf_cadence)
@@ -249,7 +258,7 @@ func _st_charge(delta: float) -> void:
 		Sfx.play("enclume_doux", -6.0, 0.7)
 	if not Input.is_action_pressed("lourde"):
 		_start_attack(3, _judge())
-	elif Input.is_action_just_pressed("ruee"):
+	elif Input.is_action_just_pressed("ruee") and World.has("ruee"):
 		_try_dash()
 
 
@@ -314,14 +323,21 @@ func _st_hurt(delta: float) -> void:
 func _st_dead(delta: float) -> void:
 	_apply_gravity(delta)
 	velocity.x = move_toward(velocity.x, 0.0, 800.0 * delta)
-	if _state_time >= 1.4:
-		position = spawn_point
-		velocity = Vector2.ZERO
-		hp = max_hp
-		rage = 0.0   # à la mort, la Rage est perdue
-		heat = 0.0
-		_invuln = 1.0
-		_set_state(S.NORMAL)
+	if _state_time >= 1.4 and not _death_reported:
+		_death_reported = true
+		Game.inst.player_died()
+
+
+## Réveil au dernier repos.
+func revive() -> void:
+	velocity = Vector2.ZERO
+	hp = max_hp
+	rage = 0.0   # à la mort, la Rage est perdue
+	heat = 0.0
+	streak = 0
+	_invuln = 1.0
+	_death_reported = false
+	_set_state(S.NORMAL)
 
 
 # =============================================================================
@@ -520,7 +536,7 @@ func _start_attack(dir: int, cadence: bool) -> void:
 ## Juge une frappe du Marteau : en cadence si on appuie pendant l'éclair
 ## (ou juste avant). Hors tempo, la Chaleur ne monte pas, mais rien n'est perdu.
 func _judge() -> bool:
-	if weapon != W.MARTEAU:
+	if weapon != W.MARTEAU or not World.has("lourde"):
 		return false
 	var ok := _window > 0.0
 	if not ok and state == S.ATTACK and not _atk.is_empty():
@@ -670,7 +686,7 @@ func _resolve_hits() -> void:
 			Game.inst.hitstop(0.09 if a.heavy else 0.05)
 			Game.inst.shake(6.0 if a.heavy else 3.0)
 
-	if (a.heavy and not pics) or a.blanc:
+	if not pics:
 		for wall in get_tree().get_nodes_in_group("fragile"):
 			if wall in a.hit or not wall.get_rect().intersects(rect):
 				continue
@@ -756,23 +772,36 @@ func _near_quench_source() -> bool:
 	return false
 
 
-func _at_sanctuary() -> bool:
-	var body := get_hurt_rect()
-	for r in Game.inst.sanctuary_rects:
-		if body.intersects(r):
-			return true
-	return false
+func weapon_name(w: int) -> String:
+	if w == W.MARTEAU and not World.has("lourde"):
+		return BROKEN_MACE
+	return WEAPON_NAMES[w]
 
 
-## Au sanctuaire, on change d'arme (dans le jeu final, parmi celles déjà forgées).
-func _switch_weapon() -> void:
-	weapon = W.PICS if weapon == W.MARTEAU else W.MARTEAU
+## Arme suivante parmi celles déjà forgées.
+func next_weapon() -> int:
+	var owned: Array = World.weapons
+	var i := owned.find(weapon)
+	return owned[(i + 1) % owned.size()]
+
+
+## Au repos, on change d'arme parmi celles déjà forgées.
+func switch_weapon() -> void:
+	weapon = next_weapon() as W
 	heat = 0.0
 	streak = 0
 	_window = 0.0
 	Sfx.play("panse", -2.0)
-	Game.inst.fx.text(position + Vector2(0, -64), WEAPON_NAMES[weapon], Color(0.95, 0.92, 0.85), 20)
+	Game.inst.fx.text(position + Vector2(0, -64), weapon_name(weapon), Color(0.95, 0.92, 0.85), 20)
 	Game.inst.fx.sparks(position + Vector2(0, 20), 16, Color(0.95, 0.95, 0.9), 200.0, -100.0, 0.8)
+
+
+func safe_position() -> Vector2:
+	return _safe_pos
+
+
+func reset_safe_pos() -> void:
+	_safe_pos = position
 
 
 ## Appelé par un ennemi au moment où son coup arrive sur Wendel.
@@ -888,6 +917,10 @@ func _draw() -> void:
 	var r := get_hurt_rect()
 	r.position -= position
 	draw_rect(r, body_col)
+	# La marque au cou : elle saigne la nuit.
+	var night := World.night_amount()
+	var neck := Vector2(-facing * 3, r.position.y + 16.0)
+	draw_circle(neck, 3.0 + 2.0 * night, Color(0.75, 0.08, 0.08, 0.5 + 0.5 * night * (0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.008))))
 	# Tête et regard
 	var head_y := r.position.y + 10.0
 	draw_rect(Rect2(facing * 4 - 4, head_y - 4, 8, 6), Color(0.2, 0.18, 0.16, a))
