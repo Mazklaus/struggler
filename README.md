@@ -5,9 +5,9 @@ Fan-game *Struggler* (Godot 4.6), encore sans graphismes. Après le prototype de
 construit la tranche verticale : le prologue, les galeries de Hautfer (Z1) et la Lande aux
 Pendus (Z2), avec le cycle jour/nuit de la marque et les premiers boss.
 
-Pour l'instant : **les galeries de Hautfer** (cinq salles reliées), le cycle de la marque,
-les repos, la mort et l'ombre de marqué. Les boss et la Lande arrivent dans les prochaines
-étapes.
+Pour l'instant : **les galeries de Hautfer** au complet (24 salles, d'après le plan détaillé),
+le cycle de la marque, les repos, la mort et l'ombre de marqué, et le premier boss, le
+**Contremaître**. La Lande aux Pendus arrive à l'étape suivante.
 
 ## Lancer le jeu
 
@@ -50,20 +50,51 @@ Une manette Xbox ou PlayStation fonctionne aussi.
 Wendel se réveille sous les décombres, seul vivant parmi les corps du bourg. De la masse
 d'armes ramassée à Doldrey, il ne reste qu'un **tronçon** : coups légers seulement, pas
 d'attaque lourde ni de Cadence. Il n'a pas non plus la **Ruée**, qu'il retrouvera chez Corvin
-dans la Lande. Il faut remonter vers la surface :
+dans la Lande. Il faut remonter vers la surface. Une case du plan vaut un écran (40 × 22 cases de 32 px) :
 
-1. **La mine effondrée** : glisser sous l'éboulis. Un mur fissuré garde une niche.
-2. **La galerie inondée** : bassins pour la trempe, étais brisés, un brasier pour se
-   reposer, et une corniche trop lointaine pour un simple saut.
-3. **Le grand puits** : on monte de corniche en corniche. Une niche n'est accessible que la
-   nuit, quand la brume se fige.
-4. **Les ruines de Hautfer** : la forge de Gerold et son **marteau** (attaque lourde, Cadence),
-   la maison des jumeaux et la **première lettre d'Ilse**, un mur éboulé à briser, une
-   corniche trop haute.
-5. **La place de la cloche** : un cercle de sel, et le puits du Contremaître, encore fermé.
+1. **L'effondrement** : on glisse sous l'éboulis. À l'ouest, **les étais** et un mur fissuré.
+2. **La galerie des corps**, puis **le puits de la lampisterie** : premier brasier, puis une
+   longue montée en corniches, autour d'un pilier qui coupe le puits en deux cheminées.
+3. **La chambre des wagonnets**, carrefour des galeries ; en bas, **l'atelier du boisage**
+   et les pics des mineurs.
+4. **La galerie de roulage**, jusqu'au **fond du puits** du bourg : on remonte la corde.
+5. **Le bourg en ruine** : la place du Puits et les tables du dernier repas, **la maison de
+   Gerold** et la **première lettre d'Ilse**, la rue de la Forge et ses pillards, **la forge**
+   (second brasier) et le **marteau de Gerold** (attaque lourde, Cadence).
+6. **Le carreau de la mine** : la grille pourrie du Grand Puits (attaque lourde chargée),
+   le clocher de la mine, le monte-charge bloqué.
+7. **Le Grand Puits**, puis **la fosse du Contremaître**. Une fois le boss vaincu, la
+   **galerie d'extraction** mène vers la Lande (prochaine étape), et le passage des boiseurs
+   ramène au brasier de la lampisterie.
 
-Chaque salle laisse des obstacles qu'on ne peut pas encore franchir (Ruée, escalade, nuit),
-pour donner envie de revenir.
+Les montées passent par la forme même des salles, jamais par des échelles posées là : le
+tas de wagonnets tombés par le trou du plancher, les piles de bois du boisage, l'escalier en
+lacets de la maison de Gerold, les planchers à trappes du clocher, le terril qui monte au
+monte-charge, les gradins de la fosse, le pilier de la veine morte. Les seules plateformes
+qu'on traverse par dessous (`-`) sont des bois : treuil, poutres, chevalement, tribune.
+
+Le dessin reste gris, mais chaque bloc porte une matière sommaire (roche, bois, maçonnerie,
+chair, éboulis, fer) et de petites étiquettes disent ce que représentent les volumes
+(wagonnet, cage d'extraction, terril, cloche fêlée…) : des indications pour la direction
+artistique, en attendant les vrais décors.
+
+Restent fermés pour plus tard : la galerie noyée (Plongée), la chapelle des mineurs (Vue
+astrale) et le levier du monte-charge (depuis la Route des pèlerins). La nuit, la brume se
+fige sur le belvédère et dans la galerie de roulage, et la veine morte cache un bandage
+derrière un plancher pourri.
+
+## Le Contremaître
+
+L'amas des mineurs de Hautfer, fondus ensemble par le sacrifice. La masse encaisse presque
+tout : il faut frapper **les visages qui pleurent** (un à la fois, puis deux).
+
+- **Coup de pioche** (il lève la pioche, contour rouge) : frappe devant lui et lance une onde
+  au sol des deux côtés. Sauter par-dessus.
+- **Lanternes** : lancées en cloche, elles laissent une flaque de feu.
+- **Effondrement** (il tremble) : la masse s'écroule et roule vers Wendel. Sauter ou monter
+  sur une corniche. En repoussant, **tous ses visages s'ouvrent** et prennent plus cher.
+- Sous la moitié de sa vie, les visages hurlent : tout va plus vite, deux visages s'ouvrent,
+  et des mineurs rampants se détachent de la masse.
 
 ## Le cycle de la marque
 
@@ -120,8 +151,10 @@ Tous les réglages sont en haut des scripts, avec des commentaires :
 - `scripts/player.gd` : vitesse, saut, ruée, Cadence (`cadence_window`, `heat_grace`,
   `heat_after_blanc`), Pics (bond, glissade au mur), Rage, Panser, fenêtre de contre.
 - `scripts/soldier.gd` : vie, vitesse, durée du signal d'attaque, bouclier.
-- `scripts/rooms.gd` : les salles, dessinées en caractères (la légende est en haut du
-  fichier), leurs passages, leurs panneaux et les objets (textes de la lettre et du marteau).
+- `scripts/rooms.gd` : la salle d'essai, la légende des caractères et les objets (textes de
+  la lettre et du marteau).
+- `scripts/rooms_hautfer.gd` : les 24 salles de Hautfer, générées par
+  `python3 tools/gen_hautfer.py` (relancer le script écrase les retouches faites à la main).
 - `scripts/world.gd` : durée du jour et de la nuit (`day_length`, `night_length`).
 - `scripts/main.gd` : nombre d'esprits par salle la nuit (`SPIRITS_PER_ROOM`).
 - `scripts/rampant.gd`, `scripts/spirit.gd`, `scripts/shadow.gd` : les nouveaux ennemis.
@@ -131,11 +164,13 @@ Tous les réglages sont en haut des scripts, avec des commentaires :
 ```
 godot --headless res://tests/smoke_test.tscn
 godot --headless res://tests/world_test.tscn
+godot --headless res://tests/boss_test.tscn
 ```
 
 Le premier pilote Wendel dans la salle d'essai : déplacements, Cadence, Frappe à blanc,
 trempe, parcours, soldat, contre, Panser, repos et changement d'arme, Entaille, glissade au
 mur. Le second joue une nouvelle partie : passages entre salles, repos et sauvegarde, nuit et
-esprits, brume, marteau de Gerold, mur éboulé, lettre d'Ilse, mort et ombre de marqué.
+esprits, brume, marteau de Gerold, treuil traversé par dessous, mur éboulé, lettre d'Ilse, mort et ombre de marqué. Le troisième vérifie le
+Contremaître, de la grille du Grand Puits jusqu'à la remontée par la cheminée de la voûte.
 
 Fan-game privé, non commercial, d'après *Berserk* de Kentaro Miura.

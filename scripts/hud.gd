@@ -33,6 +33,13 @@ func _draw() -> void:
 		return
 	_draw_play(p, font, size)
 	_draw_clock(font, size)
+	if is_instance_valid(g.boss) and g.boss.hp > 0:
+		var bw := 520.0
+		var bx := size.x * 0.5 - bw * 0.5
+		var by := size.y - 40.0
+		_center_text(font, Vector2(size.x * 0.5, by - 10), g.boss.NAME, 16, Color(0.92, 0.88, 0.8))
+		draw_rect(Rect2(bx, by, bw, 10), Color(0.15, 0.13, 0.12))
+		draw_rect(Rect2(bx, by, bw * g.boss.hp / g.boss.max_hp, 10), Color(0.7, 0.14, 0.12))
 	if g.banner_time > 0.0:
 		var a := clampf(g.banner_time, 0.0, 1.0)
 		_center_text(font, Vector2(size.x * 0.5, size.y * 0.3), g.banner, 28, Color(0.95, 0.92, 0.85, a))

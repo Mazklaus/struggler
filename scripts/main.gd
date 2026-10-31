@@ -34,6 +34,8 @@ var text_body := ""
 var fade := 0.0
 var banner := ""
 var banner_time := 0.0
+var boss                    # boss engagé dans la salle (barre de vie en bas de l'écran)
+var doors_locked := false   # pendant un combat de boss, on ne sort pas
 
 var _input_frame := 0
 var _text_since := 0.0
@@ -131,6 +133,8 @@ func _load_room(room_id: String, pos: Vector2) -> void:
 	stage.add_child(room)
 	stage.move_child(room, 0)
 	World.current_room = room_id
+	boss = null
+	doors_locked = false
 	water_rects = room.water
 	hazard_rects = room.hazards
 	camera.limit_left = 0
@@ -169,7 +173,7 @@ func _go_through(digit: String) -> void:
 	player.position = room.door_arrival(dest[1])
 	var r: Rect2 = room.doors.get(dest[1], Rect2())
 	if r.end.y >= room.size.y - 1.0:
-		vel.y = minf(vel.y, -720.0)   # on remonte par un trou dans le sol
+		vel.y = minf(vel.y, -900.0)   # on remonte par un trou dans le sol
 	player.velocity = vel
 	player.reset_safe_pos()
 	_update_camera()
@@ -256,6 +260,26 @@ func _rest_choice(id: String) -> void:
 			get_tree().paused = false
 
 
+## Un boss s'éveille : son nom s'affiche et la salle se ferme.
+func start_boss(b) -> void:
+	boss = b
+	doors_locked = true
+	banner = b.NAME
+	banner_time = 3.0
+
+
+func boss_defeated(b) -> void:
+	boss = null
+	doors_locked = false
+	World.flags["boss:" + b.ID] = true
+	World.scrap += 60
+	fx.text(b.position + Vector2(0, -60), "+60 ferraille", Color(0.85, 0.8, 0.7), 18)
+	World.save_game()
+	if b is Contremaitre:
+		show_text("Le Contremaître",
+			"La masse se défait. Wendel reconnaît des visages.\n\nLe vieux Hendrik, qui lui avait appris à tenir une pioche.\nGrete la boulangère, et ses deux fils.\nAldo, le contremaître, qui criait la cadence au fond des puits.\n\nIl les cherche tous, un par un.\nIlse n'est pas parmi eux.")
+
+
 func show_text(title: String, body: String) -> void:
 	text_title = title
 	text_body = body
@@ -314,7 +338,7 @@ func _play(delta: float) -> void:
 		return
 
 	_door_cd = maxf(_door_cd - delta, 0.0)
-	if _door_cd <= 0.0 and not player.is_dead():
+	if _door_cd <= 0.0 and not player.is_dead() and not doors_locked:
 		var body := player.get_hurt_rect()
 		for digit in room.doors:
 			if body.intersects(room.doors[digit]):
