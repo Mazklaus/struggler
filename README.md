@@ -6,7 +6,7 @@ que le jeu est agréable à jouer : déplacements nerveux façon Silksong, comba
 
 ## Lancer le jeu
 
-1. Télécharger **Godot 4.3 ou plus récent**, version standard (pas « .NET ») :
+1. Télécharger **Godot 4.6**, version standard (pas « .NET ») :
    https://godotengine.org/download
 2. Récupérer ce dépôt (bouton *Code > Download ZIP* sur GitHub, ou `git clone`).
 3. Ouvrir Godot, cliquer sur **Importer**, choisir le fichier `project.godot` du dossier.
