@@ -5,6 +5,7 @@ extends Node2D
 var solids: Array[Rect2] = []
 var water: Array[Rect2] = []
 var hazards: Array[Rect2] = []
+var sanctuaries: Array[Rect2] = []
 var hints: Array = []
 
 const C_BLOCK := Color(0.36, 0.35, 0.33)
@@ -28,6 +29,13 @@ func _draw() -> void:
 			var base := r.position.y + 6.0
 			draw_colored_polygon(PackedVector2Array([
 				Vector2(x0, base), Vector2((x0 + x1) * 0.5, base - 14.0), Vector2(x1, base)]), C_SPIKE)
+	for r in sanctuaries:
+		# Cercle de sel posé au sol.
+		var c := Vector2(r.get_center().x, r.end.y - 2.0)
+		draw_set_transform(c, 0.0, Vector2(1.0, 0.25))
+		draw_arc(Vector2.ZERO, 40.0, 0.0, TAU, 32, Color(0.95, 0.95, 0.9, 0.9), 6.0)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_line(c + Vector2(0, -6), c + Vector2(0, -40), Color(0.95, 0.95, 0.9, 0.5), 2.0)
 	var font := ThemeDB.fallback_font
 	for h in hints:
 		draw_string(font, h[0], h[1], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.85, 0.82, 0.74, 0.75))

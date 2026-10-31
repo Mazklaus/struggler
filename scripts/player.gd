@@ -1,8 +1,12 @@
 class_name Player
 extends CharacterBody2D
-## Wendel, version prototype : déplacements nerveux, marteau lent, combat en Cadence.
+## Wendel, version prototype : déplacements nerveux et deux armes forgées.
+## Le Marteau de Gerold (lent, la Cadence) et les Pics de mineur (rapides, l'Entaille).
 
 enum S { NORMAL, ATTACK, CHARGE, DASH, SLIDE, PARRY, HEAL, QUENCH, HURT, DEAD }
+enum W { MARTEAU, PICS }
+
+const WEAPON_NAMES := ["Marteau de Gerold", "Pics de mineur"]
 
 # --- Déplacements -----------------------------------------------------------
 @export var run_speed := 270.0
@@ -23,14 +27,15 @@ enum S { NORMAL, ATTACK, CHARGE, DASH, SLIDE, PARRY, HEAL, QUENCH, HURT, DEAD }
 @export var slide_time := 0.42
 @export var pogo_velocity := -560.0
 
-# --- Cadence -----------------------------------------------------------------
-@export var beat := 0.5               # écart idéal entre deux frappes (secondes)
-@export var tolerance := 0.13         # marge autour du temps idéal
+# --- Marteau : la Cadence ---------------------------------------------------
+# À la fin de chaque coup, la tête du marteau lance un éclair blanc et tinte :
+# frapper pendant l'éclair fait monter la Chaleur. Hors tempo, rien ne se perd.
+@export var cadence_window := 0.25    # durée de l'éclair (secondes)
+@export var cadence_grace := 0.07     # appui accepté juste avant l'éclair
 @export var heat_on_hit := 20.0       # Chaleur gagnée par une frappe en cadence qui touche
 @export var heat_on_whiff := 8.0      # ... qui ne touche rien
-@export var heat_break := 12.0        # Chaleur perdue quand on casse le rythme
 @export var heat_decay := 30.0        # par seconde, quand on ne frappe plus
-@export var heat_grace := 1.1         # délai avant que la Chaleur retombe
+@export var heat_grace := 2.0         # délai sans frapper avant que la Chaleur retombe
 @export var heat_after_blanc := 67.0  # Chaleur restante après une Frappe à blanc (palier 2)
 
 # --- Vie, Rage, outils -------------------------------------------------------
@@ -41,6 +46,11 @@ enum S { NORMAL, ATTACK, CHARGE, DASH, SLIDE, PARRY, HEAL, QUENCH, HURT, DEAD }
 @export var parry_window := 0.18
 @export var quench_haste_time := 3.0
 
+# --- Pics de mineur : l'Entaille ----------------------------------------------
+@export var pics_bond_velocity := -560.0   # bond de l'attaque lourde des Pics
+@export var pics_air_hang := -150.0        # un coup en l'air retient la chute
+@export var wall_slide_speed := 110.0      # les Pics freinent la glissade le long d'un mur
+
 const BODY := Vector2(28, 56)
 const SLIDE_BODY := Vector2(28, 24)
 
@@ -49,6 +59,7 @@ var facing := 1
 var hp := 7
 var rage := 0.0
 var heat := 0.0
+var weapon := W.MARTEAU
 var spawn_point := Vector2.ZERO
 
 var _shape: CollisionShape2D
@@ -57,7 +68,6 @@ var _state_time := 0.0
 var _coyote := 0.0
 var _jump_buf := 0.0
 var _attack_buf := 0.0
-var _attack_buf_press := 0
 var _attack_buf_dir := 0
 var _attack_buf_cadence := false
 var _dash_cd := 0.0
@@ -66,13 +76,16 @@ var _invuln := 0.0
 var _haste := 0.0
 var _safe_pos := Vector2.ZERO
 var _was_on_floor := false
+var _wall_dir := 0          # mur contre lequel Wendel glisse (Pics), 0 = aucun
+var _wall_lock := 0.0       # après un saut de mur, la direction est brièvement imposée
+var _air_bond := true
 
 # Attaque en cours
 var _atk := {}
 var _combo := 0
 var _last_atk_end := -10.0
-var _last_strike_usec := -1     # temps réel de la dernière frappe (pour la Cadence)
-var _tick_pending := false
+var _since_strike := 99.0       # temps depuis la dernière frappe (la Chaleur retombe après heat_grace)
+var _window := 0.0              # temps restant de l'éclair de Cadence
 var _charge := 0.0
 
 var streak := 0
@@ -105,20 +118,22 @@ func _physics_process(delta: float) -> void:
 	_haste = maxf(_haste - delta, 0.0)
 	_jump_buf = maxf(_jump_buf - delta, 0.0)
 	_attack_buf = maxf(_attack_buf - delta, 0.0)
+	_window = maxf(_window - delta, 0.0)
+	_wall_lock = maxf(_wall_lock - delta, 0.0)
+	_since_strike += delta
 
 	if Input.is_action_just_pressed("saut"):
 		_jump_buf = jump_buffer
 	if Input.is_action_just_pressed("attaque"):
 		_attack_buf = 0.22
-		_attack_buf_press = Time.get_ticks_usec()
 		_attack_buf_dir = _aim()
-		# Le tempo se juge à l'appui : une frappe lancée trop tôt casse le rythme
-		# même si elle ne part qu'à la fin du coup précédent.
-		_attack_buf_cadence = _judge(_attack_buf_press)
+		# Le tempo se juge à l'appui, même si la frappe ne part qu'à la fin du coup en cours.
+		_attack_buf_cadence = _judge()
 
 	if is_on_floor():
 		_coyote = coyote_time
 		_air_dash = true
+		_air_bond = true
 	else:
 		_coyote = maxf(_coyote - delta, 0.0)
 
@@ -147,13 +162,6 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
-func _process(_delta: float) -> void:
-	# Le signal d'enclume tombe pile au moment où il faut frapper de nouveau.
-	if _tick_pending and Time.get_ticks_usec() >= _last_strike_usec + int(beat * 1_000_000.0):
-		_tick_pending = false
-		Sfx.play("enclume_doux", -4.0)
-
-
 # =============================================================================
 #  États
 # =============================================================================
@@ -161,17 +169,23 @@ func _process(_delta: float) -> void:
 func _st_normal(delta: float) -> void:
 	_apply_gravity(delta)
 	_run(delta, 1.0)
+	_update_wall_slide()
 
 	if _jump_buf > 0.0 and _coyote > 0.0:
 		_jump()
+	elif _jump_buf > 0.0 and _wall_dir != 0:
+		_wall_jump()
 	if Input.is_action_just_released("saut") and velocity.y < 0.0:
 		velocity.y *= jump_cut
 
 	if _attack_buf > 0.0:
 		_start_attack(_attack_buf_dir, _attack_buf_cadence)
 	elif Input.is_action_just_pressed("lourde"):
-		_set_state(S.CHARGE)
-		_charge = 0.0
+		if weapon == W.PICS:
+			_start_bond()
+		else:
+			_set_state(S.CHARGE)
+			_charge = 0.0
 	elif Input.is_action_just_pressed("ruee"):
 		_try_dash()
 	elif Input.is_action_just_pressed("glissade") and is_on_floor():
@@ -184,6 +198,8 @@ func _st_normal(delta: float) -> void:
 		_try_heal()
 	elif Input.is_action_just_pressed("trempe"):
 		_try_quench()
+	elif Input.is_action_just_pressed("haut") and is_on_floor() and _at_sanctuary():
+		_switch_weapon()
 
 
 func _st_attack(delta: float) -> void:
@@ -218,6 +234,8 @@ func _st_attack(delta: float) -> void:
 	if t >= total:
 		_last_atk_end = _now()
 		_set_state(S.NORMAL)
+		if weapon == W.MARTEAU:
+			_open_window()
 		if _attack_buf > 0.0:
 			_start_attack(_attack_buf_dir, _attack_buf_cadence)
 
@@ -230,7 +248,7 @@ func _st_charge(delta: float) -> void:
 	if _charge >= 1.0 and was < 1.0:
 		Sfx.play("enclume_doux", -6.0, 0.7)
 	if not Input.is_action_pressed("lourde"):
-		_start_attack(3, _judge(Time.get_ticks_usec()))
+		_start_attack(3, _judge())
 	elif Input.is_action_just_pressed("ruee"):
 		_try_dash()
 
@@ -329,6 +347,8 @@ func _speed_mult() -> float:
 
 func _run(delta: float, control: float) -> void:
 	var dir := _input_x()
+	if _wall_lock > 0.0:
+		dir = float(facing)
 	if absf(dir) > 0.2 and state in [S.NORMAL, S.CHARGE]:
 		facing = 1 if dir > 0.0 else -1
 	var target := dir * run_speed * _speed_mult() * control
@@ -352,6 +372,31 @@ func _jump() -> void:
 	_jump_buf = 0.0
 	_coyote = 0.0
 	Sfx.play("souffle", -14.0, 0.8)
+
+
+## Pics : accrochés à la paroi, ils freinent la chute ; on peut sauter de mur en mur.
+func _update_wall_slide() -> void:
+	_wall_dir = 0
+	if weapon != W.PICS or is_on_floor() or velocity.y < 0.0 or not is_on_wall():
+		return
+	var normal := get_wall_normal()
+	var into := -signf(normal.x)
+	if absf(_input_x()) > 0.2 and signf(_input_x()) == into:
+		_wall_dir = int(into)
+		facing = -_wall_dir
+		velocity.y = minf(velocity.y, wall_slide_speed)
+		if randf() < 0.3:
+			Game.inst.fx.sparks(position + Vector2(_wall_dir * 14, -10), 1, Color(0.9, 0.85, 0.7), 60.0, 200.0, 0.3)
+
+
+func _wall_jump() -> void:
+	velocity = Vector2(-_wall_dir * 320.0, jump_velocity * 0.92)
+	facing = -_wall_dir
+	_wall_lock = 0.14
+	_wall_dir = 0
+	_jump_buf = 0.0
+	_air_dash = true
+	Sfx.play("enclume_doux", -10.0, 1.6)
 
 
 func _try_dash() -> void:
@@ -430,7 +475,9 @@ func _start_attack(dir: int, cadence: bool) -> void:
 	var now := _now()
 	_combo = (_combo + 1) % 3 if now - _last_atk_end < 0.35 else 0
 	var heavy := dir == 3
-	var blanc := heat >= 100.0
+	var blanc := heat >= 100.0 and weapon == W.MARTEAU
+	_window = 0.0
+	_since_strike = 0.0
 
 	var a := {
 		"dir": dir, "heavy": heavy, "blanc": blanc, "charge": _charge if heavy else 0.0,
@@ -453,6 +500,14 @@ func _start_attack(dir: int, cadence: bool) -> void:
 		a.windup = 0.14
 		a.active = 0.1
 		a.recovery = 0.32
+	if weapon == W.PICS:
+		# Deux pics rapides : petits coups, enchaînés très vite.
+		a.windup = 0.04
+		a.active = 0.06
+		a.recovery = 0.1
+		if dir == 2:
+			a.active = 0.16
+			a.recovery = 0.08
 	if _haste > 0.0:
 		a.recovery *= 0.7
 
@@ -462,25 +517,44 @@ func _start_attack(dir: int, cadence: bool) -> void:
 	_set_state(S.ATTACK)
 
 
-## Juge le tempo d'une frappe par rapport à la précédente. Renvoie vrai si elle est en cadence.
-func _judge(press_usec: int) -> bool:
-	var first := _last_strike_usec < 0
-	var dt := (press_usec - _last_strike_usec) / 1_000_000.0
-	_last_strike_usec = press_usec
-	_tick_pending = true
-	if first or dt > beat + 0.4:
-		streak = 0
+## Juge une frappe du Marteau : en cadence si on appuie pendant l'éclair
+## (ou juste avant). Hors tempo, la Chaleur ne monte pas, mais rien n'est perdu.
+func _judge() -> bool:
+	if weapon != W.MARTEAU:
 		return false
-	if absf(dt - beat) <= tolerance:
+	var ok := _window > 0.0
+	if not ok and state == S.ATTACK and not _atk.is_empty():
+		var total: float = _atk.windup + _atk.active + _atk.recovery
+		ok = total - _state_time <= cadence_grace
+	if ok:
 		streak += 1
-		_show_judgment("En cadence" if absf(dt - beat) > tolerance * 0.4 else "Parfait")
+		_show_judgment("En cadence")
 		Sfx.play("cadence", -6.0, 1.0 + minf(streak, 6) * 0.04)
-		return true
-	streak = 0
-	heat = maxf(heat - heat_break, 0.0)
-	_show_judgment("Trop tôt" if dt < beat else "Trop tard")
-	Sfx.play("rate", -6.0)
-	return false
+		_window = 0.0
+	else:
+		streak = 0
+	return ok
+
+
+## L'éclair blanc : le marteau a fini son coup, c'est le moment de refrapper.
+func _open_window() -> void:
+	_window = cadence_window
+	Sfx.play("enclume_doux", -4.0)
+
+
+## Pics : l'attaque lourde est un bond qui frappe vers le haut et l'avant.
+func _start_bond() -> void:
+	if not is_on_floor() and not _air_bond:
+		return
+	_air_bond = is_on_floor()
+	_charge = 0.0
+	_start_attack(3, false)
+	_atk.windup = 0.03
+	_atk.active = 0.16
+	_atk.recovery = 0.12
+	velocity.y = pics_bond_velocity
+	velocity.x = facing * 220.0
+	Sfx.play("souffle", -8.0, 1.5)
 
 
 func _show_judgment(text: String) -> void:
@@ -506,6 +580,15 @@ func _on_active_start() -> void:
 
 func _attack_rect() -> Rect2:
 	var a := _atk
+	if weapon == W.PICS:
+		match a.dir:
+			1:
+				return Rect2(position + Vector2(-26, -92), Vector2(52, 64))
+			2:
+				return Rect2(position + Vector2(-24, 10), Vector2(48, 62))
+			3:
+				return Rect2(position + Vector2(-10 if facing > 0 else -60, -90), Vector2(70, 100))
+		return Rect2(position + Vector2(4 if facing > 0 else -62, -32), Vector2(58, 48))
 	if a.blanc:
 		return Rect2(position + Vector2(-140 + facing * 30, -120), Vector2(280, 190))
 	match a.dir:
@@ -534,8 +617,11 @@ func _resolve_hits() -> void:
 	var a := _atk
 	var rect := _attack_rect()
 	var tier := heat_tier()
+	var pics := weapon == W.PICS
 	var dmg := 2
-	if a.heavy:
+	if pics:
+		dmg = 2 if a.heavy else 1
+	elif a.heavy:
 		dmg = 3 + int(round(4.0 * a.charge))
 	if a.blanc:
 		dmg = 14
@@ -550,6 +636,7 @@ func _resolve_hits() -> void:
 		"heavy": a.heavy,
 		"charge": a.charge,
 		"blanc": a.blanc,
+		"entaille": pics,
 	}
 	var landed := false
 	for target in get_tree().get_nodes_in_group("hittable"):
@@ -570,13 +657,20 @@ func _resolve_hits() -> void:
 			Game.inst.fx.sparks(at, 8 + tier * 6, col, 280.0 + tier * 80.0)
 			Game.inst.fx.sparks(at, 6, Color(0.6, 0.05, 0.05), 220.0, 1200.0, 0.6)
 			rage = minf(rage + (15.0 if a.blanc else 5.0), max_rage)
-		if not a.blanc:
+		if pics:
+			Sfx.play("coup", -6.0, 1.6)
+			Sfx.play("enclume_doux", -12.0, 2.0)
+			Game.inst.hitstop(0.025)
+			Game.inst.shake(1.5)
+			if not is_on_floor() and a.dir != 2:
+				velocity.y = minf(velocity.y, pics_air_hang)   # rester en l'air en frappant
+		elif not a.blanc:
 			Sfx.play("coup_lourd" if a.heavy else "coup", -2.0)
 			Sfx.play("enclume", -8.0 + tier * 2.0, 1.0 + tier * 0.08)
 			Game.inst.hitstop(0.09 if a.heavy else 0.05)
 			Game.inst.shake(6.0 if a.heavy else 3.0)
 
-	if a.heavy or a.blanc:
+	if (a.heavy and not pics) or a.blanc:
 		for wall in get_tree().get_nodes_in_group("fragile"):
 			if wall in a.hit or not wall.get_rect().intersects(rect):
 				continue
@@ -615,11 +709,9 @@ func _add_heat(amount: float) -> void:
 
 
 func _update_heat(delta: float) -> void:
-	if _last_strike_usec < 0 or state == S.ATTACK:
+	if state == S.ATTACK or state == S.CHARGE:
 		return
-	var since := (Time.get_ticks_usec() - _last_strike_usec) / 1_000_000.0
-	var grace := heat_grace * (1.6 if heat >= 100.0 else 1.0)
-	if since > grace:
+	if _since_strike > heat_grace:
 		heat = maxf(heat - heat_decay * delta, 0.0)
 
 
@@ -638,7 +730,8 @@ func _try_heal() -> void:
 
 func _try_quench() -> void:
 	if heat <= 0.0:
-		Game.inst.fx.text(position + Vector2(0, -50), "L'arme est froide", Color(0.7, 0.7, 0.7), 14)
+		var msg := "L'arme est froide" if weapon == W.MARTEAU else "Les Pics ne chauffent pas"
+		Game.inst.fx.text(position + Vector2(0, -50), msg, Color(0.7, 0.7, 0.7), 14)
 		return
 	if not _near_quench_source():
 		Game.inst.fx.text(position + Vector2(0, -50), "Il faut de l'eau ou du sang", Color(0.7, 0.7, 0.7), 14)
@@ -661,6 +754,25 @@ func _near_quench_source() -> bool:
 		if n.can_quench() and absf(n.global_position.x - position.x) < 80.0 and absf(n.global_position.y - position.y) < 70.0:
 			return true
 	return false
+
+
+func _at_sanctuary() -> bool:
+	var body := get_hurt_rect()
+	for r in Game.inst.sanctuary_rects:
+		if body.intersects(r):
+			return true
+	return false
+
+
+## Au sanctuaire, on change d'arme (dans le jeu final, parmi celles déjà forgées).
+func _switch_weapon() -> void:
+	weapon = W.PICS if weapon == W.MARTEAU else W.MARTEAU
+	heat = 0.0
+	streak = 0
+	_window = 0.0
+	Sfx.play("panse", -2.0)
+	Game.inst.fx.text(position + Vector2(0, -64), WEAPON_NAMES[weapon], Color(0.95, 0.92, 0.85), 20)
+	Game.inst.fx.sparks(position + Vector2(0, 20), 16, Color(0.95, 0.95, 0.9), 200.0, -100.0, 0.8)
 
 
 ## Appelé par un ennemi au moment où son coup arrive sur Wendel.
@@ -733,14 +845,16 @@ func get_hurt_rect() -> Rect2:
 	return Rect2(position + Vector2(-size.x * 0.5, _shape.position.y - size.y * 0.5), size)
 
 
-## Pour l'interface : avance (0..1) vers le prochain temps de frappe idéal.
-func beat_phase() -> float:
-	if _last_strike_usec < 0:
+## Pour l'interface : avance du coup de marteau en cours (0..1), ou -1.
+func swing_progress() -> float:
+	if weapon != W.MARTEAU or state != S.ATTACK or _atk.is_empty():
 		return -1.0
-	var since := (Time.get_ticks_usec() - _last_strike_usec) / 1_000_000.0
-	if since > beat + 0.4:
-		return -1.0
-	return since / beat
+	return _state_time / (_atk.windup + _atk.active + _atk.recovery)
+
+
+## Pour l'interface : part restante de l'éclair de Cadence (0..1).
+func window_left() -> float:
+	return _window / cadence_window
 
 
 func haste_left() -> float:
@@ -791,7 +905,10 @@ func _draw() -> void:
 		S.QUENCH:
 			draw_rect(Rect2(facing * 14 - 3, 0, 6, 30), Color(0.85, 0.9, 0.95, 0.7))
 
-	_draw_hammer(heat_col)
+	if weapon == W.PICS:
+		_draw_picks(a)
+	else:
+		_draw_hammer(heat_col)
 
 
 func _heat_color() -> Color:
@@ -853,7 +970,51 @@ func _draw_hammer(col: Color) -> void:
 		tip + perp * head - dir * 6.0, tip + perp * head + dir * 8.0,
 		tip - perp * head + dir * 8.0, tip - perp * head - dir * 6.0])
 	draw_colored_polygon(pts, col)
+	if _window > 0.0:
+		# L'éclair blanc : c'est maintenant qu'il faut refrapper.
+		var k := _window / cadence_window
+		draw_circle(tip, 10.0 + 14.0 * k, Color(1, 1, 1, 0.35 + 0.5 * k))
+		draw_colored_polygon(pts, Color(1, 1, 1))
 	if state == S.ATTACK and _state_time >= _atk.windup and _state_time < _atk.windup + _atk.active:
 		var r := _attack_rect()
 		r.position -= position
 		draw_rect(r, Color(col.r, col.g, col.b, 0.15))
+
+
+func _draw_picks(alpha: float) -> void:
+	var col := Color(0.7, 0.7, 0.72, alpha)
+	var handle := Color(0.45, 0.35, 0.25, alpha)
+	var angs := [70.0, 110.0]
+	var reach := 26.0
+	if state == S.ATTACK:
+		var a := _atk
+		var k := clampf((_state_time - a.windup) / maxf(a.active, 0.01), 0.0, 1.0)
+		var front := _combo % 2   # les deux pics frappent à tour de rôle
+		match a.dir:
+			1:
+				angs[front] = lerpf(30.0, -90.0, k)
+			2:
+				angs = [90.0, 90.0]
+				reach = 34.0
+			3:
+				angs = [lerpf(60.0, -70.0, k), lerpf(80.0, -50.0, k)]
+			_:
+				angs[front] = lerpf(-60.0, 40.0, k)
+		if a.dir == 0 or a.dir == 1:
+			reach = 32.0
+	elif _wall_dir != 0:
+		angs = [-30.0, 10.0]
+	for i in 2:
+		var ang: float = angs[i]
+		if facing < 0:
+			ang = 180.0 - ang
+		var shoulder := Vector2(-4 + i * 8, -12)
+		var d := Vector2.from_angle(deg_to_rad(ang))
+		var tip := shoulder + d * reach
+		draw_line(shoulder, tip, handle, 3.0)
+		var perp := Vector2(-d.y, d.x)
+		draw_line(tip - perp * 9.0, tip + perp * 9.0 + d * 4.0, col, 3.0)
+	if state == S.ATTACK and _state_time >= _atk.windup and _state_time < _atk.windup + _atk.active:
+		var r := _attack_rect()
+		r.position -= position
+		draw_rect(r, Color(0.9, 0.85, 0.8, 0.12))
