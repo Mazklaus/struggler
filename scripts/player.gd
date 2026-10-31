@@ -25,7 +25,7 @@ enum S { NORMAL, ATTACK, CHARGE, DASH, SLIDE, PARRY, HEAL, QUENCH, HURT, DEAD }
 
 # --- Cadence -----------------------------------------------------------------
 @export var beat := 0.5               # écart idéal entre deux frappes (secondes)
-@export var tolerance := 0.09         # marge autour du temps idéal
+@export var tolerance := 0.13         # marge autour du temps idéal
 @export var heat_on_hit := 20.0       # Chaleur gagnée par une frappe en cadence qui touche
 @export var heat_on_whiff := 8.0      # ... qui ne touche rien
 @export var heat_break := 12.0        # Chaleur perdue quand on casse le rythme

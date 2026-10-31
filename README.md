@@ -33,7 +33,7 @@ Une manette Xbox ou PlayStation fonctionne aussi.
 ## Ce qu'il faut essayer
 
 - **La Cadence.** Frapper le mannequin au son de l'enclume : un tintement sonne au moment
-  idéal pour la frappe suivante (toutes les 0,5 s), et l'anneau en bas de l'écran se
+  idéal pour la frappe suivante (toutes les 0,5 s, à 0,13 s près), et l'anneau en bas de l'écran se
   referme sur sa cible. En rythme, l'arme chauffe ; trop tôt ou trop tard, le rythme casse
   et la Chaleur baisse. Marteler le bouton ne marche pas.
 - **La Chaleur.** Trois paliers : *rougeoie* (+1 dégât, brûlure), *brise-garde* (les coups
