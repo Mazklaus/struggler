@@ -31,6 +31,7 @@ enum S { NORMAL, ATTACK, CHARGE, DASH, SLIDE, PARRY, HEAL, QUENCH, HURT, DEAD }
 @export var heat_break := 12.0        # Chaleur perdue quand on casse le rythme
 @export var heat_decay := 30.0        # par seconde, quand on ne frappe plus
 @export var heat_grace := 1.1         # délai avant que la Chaleur retombe
+@export var heat_after_blanc := 67.0  # Chaleur restante après une Frappe à blanc (palier 2)
 
 # --- Vie, Rage, outils -------------------------------------------------------
 @export var max_hp := 7
@@ -496,8 +497,9 @@ func _on_active_start() -> void:
 		Game.inst.fx.sparks(position + Vector2(facing * 30, 0), 60, Color(1.0, 0.95, 0.75), 700.0, 600.0, 0.8)
 		Game.inst.fx.sparks(position + Vector2(facing * 30, 0), 40, Color(1.0, 0.55, 0.15), 500.0, 800.0, 0.7)
 		Game.inst.fx.text(position + Vector2(0, -70), "FRAPPE À BLANC", Color(1.0, 0.95, 0.8), 22)
-		heat = 0.0
-		streak = 0
+		# Le marteau ne refroidit pas d'un coup : il retombe au palier brise-garde.
+		heat = minf(heat, heat_after_blanc)
+		a.heat_given = true   # la Frappe à blanc elle-même ne rechauffe pas
 	else:
 		Sfx.play("souffle", -10.0, 0.9 if a.heavy else 1.2)
 

@@ -38,7 +38,8 @@ Une manette Xbox ou PlayStation fonctionne aussi.
   et la Chaleur baisse. Marteler le bouton ne marche pas.
 - **La Chaleur.** Trois paliers : *rougeoie* (+1 dégât, brûlure), *brise-garde* (les coups
   légers brisent le bouclier du soldat), *à blanc* : la frappe suivante est une
-  **Frappe à blanc**, une explosion d'étincelles qui sonne la cloche. La Chaleur retombe si
+  **Frappe à blanc**, une explosion d'étincelles qui sonne la cloche. Après elle, la Chaleur
+  retombe au palier brise-garde (réglage `heat_after_blanc`). La Chaleur retombe si
   on arrête de frapper.
 - **La Trempe.** Dans l'eau, dans une flaque de sang ou à côté d'un soldat à terre : `E`
   refroidit l'arme d'un coup et donne 3 s de vitesse. Garder la Chaleur ou la dépenser ?

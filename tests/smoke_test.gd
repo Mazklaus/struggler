@@ -83,7 +83,7 @@ func _run() -> void:
 		await _wait(0.5 - 2.0 / 120.0)
 	await _wait(0.1)
 	print("    chaleur après la Frappe à blanc : %.0f" % p.heat)
-	_check(saw_blanc and p.heat < 100.0, "la Frappe à blanc part et vide la Chaleur")
+	_check(saw_blanc and p.heat < 100.0 and p.heat_tier() >= 2, "la Frappe à blanc part et la Chaleur retombe au palier 2 (%.0f)" % p.heat)
 	await _wait(1.0)
 
 	# Trempe dans l'eau
