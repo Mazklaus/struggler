@@ -13,6 +13,7 @@ config/features=PackedStringArray("4.6")
 
 Sfx="*res://scripts/sfx.gd"
 World="*res://scripts/world.gd"
+Art="*res://scripts/art/art.gd"
 
 [display]
 

@@ -1,0 +1,12 @@
+{
+ "images": 15,
+ "largeur": 212,
+ "hauteur": 212,
+ "fps": 12,
+ "appui": [
+  106,
+  195
+ ],
+ "boucle": true,
+ "echelle_jeu": 0.5
+}

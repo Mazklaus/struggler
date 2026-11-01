@@ -1,0 +1,97 @@
+{
+	"zone": "hautfer",
+	"note": "Salles de Hautfer passées en vraie DA. Une salle absente ici reste en gris. « voile » : opacité de la brume entre le fond et les blocs (plus fort = fond plus lointain). « decors » : objets posés, x en tuiles (centre), y en tuiles (ligne du sol sous l'objet), échelle 0.5 pour l'art au double, « devant » pour passer devant Wendel. « lumiere » : halo chaud autour de l'objet ; « miroir » : retourné.",
+	"matieres": {
+		"roche": "matieres/roche.png",
+		"bois": "matieres/bois.png",
+		"maconnerie": "matieres/maconnerie.png",
+		"chair": "matieres/chair.png",
+		"eboulis": "matieres/eboulis.png",
+		"fer": "matieres/fer.png"
+	},
+	"salles": {
+		"h21_carreau": {
+			"fond": "fonds/carreau.jpg",
+			"parallaxe": 0.18,
+			"palette": {
+				"encre": "1d1420",
+				"ombre": "3a2a44",
+				"lumiere": "f2a866",
+				"brume": "8a5560"
+			},
+			"voile": 0.25,
+			"decors": [
+				{
+					"image": "decors/wagonnet.png",
+					"x": 11,
+					"y": 19,
+					"echelle": 0.5
+				},
+				{
+					"image": "decors/treuil.png",
+					"x": 92,
+					"y": 19,
+					"echelle": 0.5
+				},
+				{
+					"image": "decors/brasero.png",
+					"x": 60,
+					"y": 19,
+					"echelle": 0.5,
+					"lumiere": true
+				}
+			]
+		},
+		"h23_grand_puits": {
+			"parallaxe": 0.3,
+			"palette": {
+				"encre": "0c171c",
+				"ombre": "2a2a3c",
+				"lumiere": "f0a85c",
+				"brume": "2a2030"
+			},
+			"voile": 0.4,
+			"decors": [
+				{
+					"image": "decors/lanterne.png",
+					"x": 35.4,
+					"y": 13,
+					"echelle": 0.4,
+					"lumiere": true
+				},
+				{
+					"image": "decors/lanterne.png",
+					"x": 35.4,
+					"y": 34,
+					"echelle": 0.4,
+					"lumiere": true
+				},
+				{
+					"image": "decors/lanterne.png",
+					"x": 4.6,
+					"y": 52,
+					"echelle": 0.4,
+					"lumiere": true,
+					"miroir": true
+				},
+				{
+					"image": "decors/poulie.png",
+					"x": 28,
+					"y": 5.5,
+					"echelle": 0.5
+				}
+			],
+			"fond_modules": {
+				"axe": "vertical",
+				"largeur": 1400,
+				"taille": 420,
+				"base": [
+					"modules/puits_paroi_a.jpg",
+					"modules/puits_paroi_b.jpg",
+					"modules/puits_paroi_c.jpg",
+					"modules/puits_chair_a.jpg", "modules/puits_chair_b.jpg"
+				]
+			}
+		}
+	}
+}
