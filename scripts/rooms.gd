@@ -16,9 +16,16 @@ extends RefCounted
 ##   G  point d'apparition des esprits la nuit      g  esprit présent même le jour
 ##   c  corps (décor)            B  boss de la salle (voir "boss"), absent une fois vaincu
 ##   Objets (voir ITEMS) : f ferraille, v bandage de Hautfer (+1 PV), m marteau de Gerold,
-##   l lettre d'Ilse, k les pics des mineurs.
+##   l lettre d'Ilse, k les pics des mineurs, s sacs de sel de Corvin, r registre du bourreau.
+##   K  limite invisible (le ciel au-dessus des salles en plein air)
+##   N  personnage à qui parler (voir "npcs" : "x,y" -> id, et Dialogues)
+##   C  corbeau   Q  sergent des déserteurs   p  pendu (décor)
+##   "herse" : {"gate": [x, y, l, h], "chain": [x, y], "flag": ...} ; "outdoor" : salle en plein air ;
+##   "event" : scène (premiere_nuit, à partir de la colonne "event_x") ; "epreuve" : le cercle de
+##   l'épreuve de Corvin ; "spirits" : nombre d'esprits la nuit (3 par défaut).
 ##
-## Les salles de Hautfer sont dans rooms_hautfer.gd (généré par tools/gen_hautfer.py).
+## Les salles de Hautfer sont dans rooms_hautfer.gd (généré par tools/gen_hautfer.py),
+## celles de la Lande dans rooms_lande.gd (tools/gen_lande.py).
 ##
 ## "hints" : panneaux d'aide posés dans la salle, [colonne, ligne, texte].
 
@@ -34,6 +41,10 @@ const ITEMS := {
 		"text": "Le marteau de ton père, encore posé sur l'enclume froide.\nIl répétait que tu avais pris toute la force.\n\nAttaque lourde : maintenir K (Y), relâcher. Chargée, elle brise les murs fissurés.\nLa Cadence : refrappe pendant l'éclair blanc pour faire chauffer le marteau."},
 	"k": {"type": "capacite", "id": "pics_mineurs", "title": "Les pics des mineurs",
 		"text": "Les pics de ceux qui sont morts au fond, rangés au râtelier comme chaque soir.\nTu les emportes. Avec un peu de sel et une bonne forge, ils serviront encore."},
+	"s": {"type": "quete", "id": "sel_corvin", "title": "Les sacs de sel de Corvin",
+		"text": "Trois sacs de gros sel gris, cousus d'un C. Les déserteurs comptaient le revendre.\nIl faut les rapporter à la Tour de sel."},
+	"r": {"type": "note", "id": "registre", "title": "Le registre du bourreau",
+		"text": "Des colonnes de noms, d'une écriture appliquée. « Pendu pour désertion. Pendu pour vol. Pendu. »\nLes dernières pages sont d'une autre main, plus grande, qui appuie trop :\n« Le Seigneur des gibets veut des cordes neuves. L'arbre a faim. »"},
 	"l": {"type": "lettre", "id": 1, "title": "Lettre d'Ilse, jamais envoyée",
 		"text": "Wendel,\n\nTu es parti avant l'aube pour ne pas me voir pleurer.\nJe t'ai vu quand même, par la fenêtre.\n\nIlse"},
 }
@@ -88,4 +99,5 @@ static var DATA := _all()
 static func _all() -> Dictionary:
 	var d := BASE.duplicate()
 	d.merge(RoomsHautfer.DATA)
+	d.merge(RoomsLande.DATA)
 	return d

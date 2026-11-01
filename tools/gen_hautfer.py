@@ -9,137 +9,7 @@ Usage : python3 tools/gen_hautfer.py   (réécrit scripts/rooms_hautfer.gd)
 On peut ensuite retoucher les salles à la main dans le .gd ; relancer ce script écrase ces retouches.
 """
 from pathlib import Path
-
-CW, CH = 40, 22   # une case du plan, en cases de 32 px
-
-
-class R:
-    def __init__(self, rid, name, w, h):
-        self.id, self.name = rid, name
-        self.W, self.H = CW * w, CH * h
-        self.g = [["#"] * self.W for _ in range(self.H)]
-        self.doors = {}
-        self.hints = []
-        self.labels = []
-        self.extra = {}
-        # intérieur : 2 cases de roche sur les côtés et en haut, 3 en bas
-        self.fill(2, 2, self.W - 3, self.H - 4, " ")
-
-    def fill(self, x0, y0, x1, y1, ch):
-        for y in range(max(0, y0), min(self.H, y1 + 1)):
-            for x in range(max(0, x0), min(self.W, x1 + 1)):
-                self.g[y][x] = ch
-        return self
-
-    def put(self, x, y, s):
-        for i, ch in enumerate(s):
-            if 0 <= x + i < self.W:
-                self.g[y][x + i] = ch
-        return self
-
-    def plat(self, x, y, n, ch="#"):
-        return self.fill(x, y, x + n - 1, y, ch)
-
-    def hint(self, x, y, text):
-        self.hints.append([x, y, text])
-        return self
-
-    def label(self, x, y, text):
-        """Étiquette de DA : ce que représente un volume (dessinée discrètement, en petit)."""
-        self.labels.append([x, y, text])
-        return self
-
-    def retint(self, x0, y0, x1, y1, to, frm="#"):
-        """Change la matière des blocs d'une zone (roche -> bois, maçonnerie, chair...)."""
-        for y in range(max(0, y0), min(self.H, y1 + 1)):
-            for x in range(max(0, x0), min(self.W, x1 + 1)):
-                if self.g[y][x] == frm:
-                    self.g[y][x] = to
-        return self
-
-    # --- passages -------------------------------------------------------------------------
-    def side(self, side, seg, digit, dest, ledge=8):
-        """Passage sur le côté gauche (W) ou droit (E), au niveau du sol de la rangée seg."""
-        y0 = CH * seg + 16
-        x_edge, x_in = (0, 1) if side == "W" else (self.W - 1, self.W - 2)
-        for y in range(y0, y0 + 3):
-            self.g[y][x_edge] = digit
-            self.g[y][x_in] = " "
-        # un sol sous le passage, vers l'intérieur
-        if side == "W":
-            self.fill(0, y0 + 3, ledge - 1, y0 + 3, "#")
-        else:
-            self.fill(self.W - ledge, y0 + 3, self.W - 1, y0 + 3, "#")
-        self.doors[digit] = dest
-        return self
-
-    def top(self, x, digit, dest):
-        """Passage vers le haut : un trou de 4 cases dans le plafond (colonnes x à x+3)."""
-        self.fill(x, 0, x + 3, 0, digit)
-        self.fill(x, 1, x + 3, 1, " ")
-        self.doors[digit] = dest
-        return self
-
-    def bottom(self, x, digit, dest, grate=False):
-        """Passage vers le bas : un trou dans le sol. grate : couvert d'une grille fissurée."""
-        H = self.H
-        self.fill(x, H - 3, x + 3, H - 2, " ")
-        if grate:
-            self.fill(x, H - 3, x + 3, H - 3, "X")
-        self.fill(x, H - 1, x + 3, H - 1, digit)
-        self.doors[digit] = dest
-        return self
-
-    def _jit(self, *k):
-        """Petit bruit déterministe (0, 1 ou 2) pour casser les formes trop régulières."""
-        h = 0
-        for v in (self.id,) + k:
-            for ch in str(v):
-                h = (h * 131 + ord(ch)) % 1000003
-        return h % 3
-
-    def wl(self, top, end, depth=3, ch="#"):
-        """Corniche de roche accrochée au mur gauche (jusqu'à la colonne end) ;
-        le dessous s'épaissit vers le mur, de façon irrégulière."""
-        self.fill(2, top, end, top, ch)
-        for k in range(1, depth + 1):
-            self.fill(2, top + k, end - 2 * k - self._jit(top, k), top + k, ch)
-        return self
-
-    def wr(self, top, start, depth=3, ch="#"):
-        """Corniche de roche accrochée au mur droit (à partir de la colonne start)."""
-        self.fill(start, top, self.W - 3, top, ch)
-        for k in range(1, depth + 1):
-            self.fill(start + 2 * k + self._jit(top, k), top + k, self.W - 3, top + k, ch)
-        return self
-
-    def rough(self, y0, y1, depth=2):
-        """Parois irrégulières : des bosses de roche le long des deux murs, entre y0 et y1."""
-        for y in range(y0, y1 + 1):
-            for side in (0, 1):
-                d = min(depth, (self._jit(y // 2, side) + self._jit(y // 3, side, 1)) // 2 + self._jit(y // 5, side, 2) // 2)
-                for i in range(d):
-                    x = 2 + i if side == 0 else self.W - 3 - i
-                    if self.g[y][x] == " " and all(not self.g[yy][0 if side == 0 else self.W - 1].isdigit()
-                                                    for yy in range(max(0, y - 1), min(self.H, y + 5))):
-                        self.g[y][x] = "#"
-        return self
-
-    def mound(self, steps, floor=None, ch="#"):
-        """Un tas (éboulis, gradins, piles) : [(x0, x1, haut), ...], plein jusqu'au sol."""
-        floor = self.H - 4 if floor is None else floor
-        for x0, x1, y in steps:
-            self.fill(x0, y, x1, floor, ch)
-        return self
-
-    def spot(self, x, y, s):
-        """Pose un objet ou un ennemi sur une case vide (vérifié)."""
-        for i in range(len(s)):
-            assert self.g[y][x + i] == " ", (self.id, x + i, y, self.g[y][x + i])
-        return self.put(x, y, s)
-
-    def rows(self):
-        return ["".join(r) for r in self.g]
+from roomgen import R, CW, CH, to_gd
 
 
 def build():
@@ -447,12 +317,11 @@ def build():
 
     r = mk("h20_extraction", "La galerie d'extraction", 2, 1)
     r.side("W", 0, "1", ["h19_fosse", "3"])
-    r.side("E", 0, "2", [])
+    r.side("E", 0, "2", ["l01_ravin", "1"])
     r.fill(2, 2, 77, 5, "#")
     r.fill(20, 17, 33, 18, "#").fill(26, 15, 30, 16, "#")
     r.fill(44, 16, 49, 18, "#").fill(50, 13, 60, 18, "#").fill(61, 16, 65, 18, "#").put(70, 18, "c")
     r.hint(56, 9, "La Lande aux Pendus, à l'est")
-    r.hint(56, 10, "(prochaine étape de la tranche)")
     # DA : matières et étiquettes
     r.retint(20, 15, 33, 18, "t").retint(44, 13, 65, 18, "t")
     r.label(20, 13, "déblais").label(46, 11, "éboulement")
@@ -538,40 +407,10 @@ def build():
     return rooms
 
 
-def to_gd(rooms):
-    out = []
-    out.append("class_name RoomsHautfer")
-    out.append("extends RefCounted")
-    out.append("## Les 24 salles des Galeries de Hautfer (Z1), d'après le plan détaillé.")
-    out.append("## Fichier généré par tools/gen_hautfer.py : voir la légende dans rooms.gd.")
-    out.append("")
-    out.append("const DATA := {")
-    for r in rooms:
-        out.append(f'\t"{r.id}": {{')
-        out.append(f'\t\t"name": "{r.name}",')
-        out.append('\t\t"zone": "Les galeries de Hautfer",')
-        for k, v in r.extra.items():
-            out.append(f'\t\t"{k}": "{v}",')
-        doors = ", ".join(f'"{d}": ["{v[0]}", "{v[1]}"]' for d, v in sorted(r.doors.items()) if v)
-        out.append(f"\t\t\"doors\": {{{doors}}},")
-        hints = ", ".join('[%d, %d, "%s"]' % (h[0], h[1], h[2].replace('"', '\\"')) for h in r.hints)
-        out.append(f"\t\t\"hints\": [{hints}],")
-        if r.labels:
-            labels = ", ".join('[%d, %d, "%s"]' % (h[0], h[1], h[2].replace('"', '\\"')) for h in r.labels)
-            out.append(f"\t\t\"labels\": [{labels}],")
-        out.append('\t\t"rows": [')
-        for row in r.rows():
-            out.append(f'\t\t\t"{row}",')
-        out.append("\t\t],")
-        out.append("\t},")
-    out.append("}")
-    return "\n".join(out) + "\n"
-
-
 if __name__ == "__main__":
     rooms = build()
-    for r in rooms:
-        assert len(r.g) == r.H and all(len(x) == r.W for x in r.g), r.id
     path = Path(__file__).resolve().parent.parent / "scripts" / "rooms_hautfer.gd"
-    path.write_text(to_gd(rooms), encoding="utf-8")
+    path.write_text(to_gd(rooms, "RoomsHautfer", "Les galeries de Hautfer",
+                          "Les 24 salles des Galeries de Hautfer (Z1), d'après le plan détaillé.\n"
+                          "Fichier généré par tools/gen_hautfer.py : voir la légende dans rooms.gd."), encoding="utf-8")
     print(f"{len(rooms)} salles écrites dans {path}")

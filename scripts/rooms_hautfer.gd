@@ -755,8 +755,8 @@ const DATA := {
 	"h20_extraction": {
 		"name": "La galerie d'extraction",
 		"zone": "Les galeries de Hautfer",
-		"doors": {"1": ["h19_fosse", "3"]},
-		"hints": [[56, 9, "La Lande aux Pendus, à l'est"], [56, 10, "(prochaine étape de la tranche)"]],
+		"doors": {"1": ["h19_fosse", "3"], "2": ["l01_ravin", "1"]},
+		"hints": [[56, 9, "La Lande aux Pendus, à l'est"]],
 		"labels": [[20, 13, "déblais"], [46, 11, "éboulement"]],
 		"rows": [
 			"################################################################################",

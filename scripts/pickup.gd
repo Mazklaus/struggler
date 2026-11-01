@@ -33,6 +33,10 @@ func _take() -> void:
 			World.grant(item.id)
 			Sfx.play("glas", -4.0)
 			Game.inst.show_text(item.title, item.text)
+		"quete", "note":
+			World.flags["quete:" + item.id] = true
+			Sfx.play("panse", -4.0, 0.8)
+			Game.inst.show_text(item.title, item.text)
 		"lettre":
 			if not item.id in World.letters:
 				World.letters.append(item.id)
@@ -48,6 +52,12 @@ func _draw() -> void:
 		"ferraille":
 			for i in 3:
 				draw_rect(Rect2(Vector2(-10 + i * 6, 4 - i * 3 + bob), Vector2(8, 5)), Color(0.6, 0.58, 0.55))
+		"quete":
+			draw_rect(Rect2(-12, -8 + bob, 24, 18), Color(0.85, 0.82, 0.74))
+			draw_rect(Rect2(-12, -8 + bob, 24, 4), Color(0.55, 0.45, 0.32))
+		"note":
+			draw_rect(Rect2(-10, -8 + bob, 20, 16), Color(0.42, 0.32, 0.24))
+			draw_line(Vector2(-6, -2 + bob), Vector2(6, -2 + bob), Color(0.8, 0.75, 0.65), 2.0)
 		"lettre":
 			draw_rect(Rect2(-9, -6 + bob, 18, 12), Color(0.92, 0.88, 0.78))
 			draw_line(Vector2(-9, -6 + bob), Vector2(0, 1 + bob), Color(0.35, 0.5, 0.85), 2.0)

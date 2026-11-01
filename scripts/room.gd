@@ -5,7 +5,8 @@ extends Node2D
 
 const TILE := 32.0
 ## Blocs pleins : caractère -> matière (indication de DA pour le dessin gris).
-const MATS := {"#": "roche", "^": "roche", "b": "bois", "M": "maconnerie", "o": "chair", "t": "eboulis", "a": "fer"}
+const MATS := {"#": "roche", "^": "roche", "b": "bois", "M": "maconnerie", "o": "chair", "t": "eboulis", "a": "fer",
+	"K": "ciel"}
 
 var id := ""
 var data := {}
@@ -19,6 +20,8 @@ var doors := {}                  # chiffre -> Rect2
 var spirit_points: Array[Vector2] = []
 var start_pos := Vector2.ZERO    # case P, s'il y en a une
 var deco: LevelDraw
+var npcs: Array = []             # personnages à qui parler (Npc)
+var herse: Herse
 
 var _night_shapes: Array[CollisionShape2D] = []
 
@@ -43,6 +46,7 @@ func build(room_id: String) -> void:
 	var plank_rects: Array[Rect2] = []
 	var corpses: Array[Vector2] = []
 	var wells: Array[Rect2] = []
+	var hanged: Array[Vector2] = []
 
 	for y in rows.size():
 		var line: String = rows[y]
@@ -85,6 +89,23 @@ func build(room_id: String) -> void:
 					add_child(s)
 				"c":
 					corpses.append(feet)
+				"p":
+					hanged.append(cell + Vector2(TILE * 0.5, 0))
+				"N":
+					var n := Npc.new()
+					n.id = data.get("npcs", {}).get("%d,%d" % [x, y], "paysan")
+					n.position = feet
+					add_child(n)
+					npcs.append(n)
+				"C":
+					var cr := Crow.new()
+					cr.position = cell + Vector2(TILE * 0.5, TILE * 0.5)
+					add_child(cr)
+				"Q":
+					var q := Soldier.new()
+					q.sergeant = true
+					q.position = feet + Vector2(0, -35)
+					add_child(q)
 				"E":
 					var e := Soldier.new()
 					e.position = feet + Vector2(0, -29)
@@ -99,6 +120,10 @@ func build(room_id: String) -> void:
 						var b := Contremaitre.new()
 						b.position = feet + Vector2(0, -Contremaitre.BODY.y * 0.5)
 						add_child(b)
+					elif boss_id == "gibets" and not World.flags.has("boss:" + boss_id):
+						var g := SeigneurGibets.new()
+						g.position = feet + Vector2(0, -SeigneurGibets.BODY.y * 0.5)
+						add_child(g)
 				"R":
 					var r := Rampant.new()
 					r.position = feet + Vector2(0, -12)
@@ -150,6 +175,17 @@ func build(room_id: String) -> void:
 			wall.flag = key
 			add_child(wall)
 
+	if data.has("herse"):
+		var hd: Dictionary = data.herse
+		herse = Herse.new()
+		herse.gate = Rect2(hd.gate[0] * TILE, hd.gate[1] * TILE, hd.gate[2] * TILE, hd.gate[3] * TILE)
+		herse.chain = Rect2(hd.chain[0] * TILE, hd.chain[1] * TILE, TILE, TILE)
+		herse.flag = hd.get("flag", "")
+		herse.open_time = hd.get("open_time", herse.open_time)
+		add_child(herse)
+
+	deco.outdoor = data.get("outdoor", false)
+	deco.hanged = hanged
 	deco.water = water
 	deco.hazards = hazards
 	deco.rests = rests
@@ -170,6 +206,18 @@ func build(room_id: String) -> void:
 func set_night(night: bool) -> void:
 	for s in _night_shapes:
 		s.set_deferred("disabled", not night)
+
+
+## Haut, à côté d'un personnage ou d'une chaîne : parler, tirer. Renvoie true si quelque chose a répondu.
+func interact(rect: Rect2) -> bool:
+	for n in npcs:
+		if is_instance_valid(n) and n.talk_rect().intersects(rect):
+			Game.inst.talk(n.id)
+			return true
+	if herse and herse.near_chain(rect):
+		herse.pull()
+		return true
+	return false
 
 
 func rest_at(rect: Rect2) -> Dictionary:

@@ -12,6 +12,10 @@ enum M { TITLE, PLAY, REST, TEXT, FADE }
 const TILE := 32.0
 const NIGHT_TINT := Color(0.5, 0.56, 0.8)
 const SPIRITS_PER_ROOM := 3
+const TRIAL_LENGTH := 45.0
+## Ce que murmurent les esprits pendant l'épreuve de Corvin.
+const VOICES := ["Wendel...", "Pourquoi tu es parti ?", "Il fait froid, ici.", "Tu avais promis de revenir.",
+	"Ouvre le cercle.", "Je t'ai attendu.", "Gerold t'appelle."]
 
 var mode := M.TITLE
 var stage: Node2D
@@ -36,6 +40,10 @@ var banner := ""
 var banner_time := 0.0
 var boss                    # boss engagé dans la salle (barre de vie en bas de l'écran)
 var doors_locked := false   # pendant un combat de boss, on ne sort pas
+var mercy := false          # pendant une scène, Wendel ne peut pas mourir
+var trial_time := 0.0       # l'épreuve de Corvin : temps restant avant l'aube (0 = pas d'épreuve)
+var event_time := -1.0      # la première nuit dans la Lande : temps depuis le début de la scène
+var _knight: Node2D
 
 var _input_frame := 0
 var _text_since := 0.0
@@ -135,6 +143,9 @@ func _load_room(room_id: String, pos: Vector2) -> void:
 	World.current_room = room_id
 	boss = null
 	doors_locked = false
+	trial_time = 0.0
+	event_time = -1.0
+	mercy = false
 	water_rects = room.water
 	hazard_rects = room.hazards
 	camera.limit_left = 0
@@ -234,6 +245,8 @@ func open_rest(kind: String) -> void:
 
 func _build_rest_menu(kind: String) -> void:
 	menu_items = []
+	if room.data.get("epreuve", false) and World.flags.get("corvin", 0) == 2 and not World.flags.has("epreuve"):
+		menu_items.append(["epreuve", "Tenir la nuit (l'épreuve de Corvin)"])
 	if World.weapons.size() > 1:
 		menu_items.append(["arme", "Changer d'arme : %s" % player.weapon_name(player.next_weapon())])
 	if World.is_night():
@@ -250,6 +263,16 @@ func _rest_choice(id: String) -> void:
 			player.switch_weapon()
 			World.weapon = player.weapon
 			_build_rest_menu(menu_items[-1][0])
+		"epreuve":
+			await _fade_out()
+			World.wait_until(true)
+			trial_time = TRIAL_LENGTH
+			doors_locked = true
+			_spawn_timer = 1.0
+			await get_tree().create_timer(0.3, true).timeout
+			await _fade_in()
+			banner = "Tiens jusqu'à l'aube, sans sortir du cercle"
+			banner_time = 3.0
 		"nuit", "jour":
 			await _fade_out()
 			World.wait_until(id == "nuit")
@@ -275,9 +298,22 @@ func boss_defeated(b) -> void:
 	World.scrap += 60
 	fx.text(b.position + Vector2(0, -60), "+60 ferraille", Color(0.85, 0.8, 0.7), 18)
 	World.save_game()
+	if b is SeigneurGibets:
+		show_text("Le Seigneur des gibets",
+			"Il tombe à genoux sous son arbre. La corde à son cou se tend une dernière fois.\n\n« J'ai pendu pour l'armée. Puis pour moi. Puis pour lui.\nIl m'avait promis que l'arbre se tairait. »\n\nLes pendus du Grand Gibet se balancent, sans un bruit.\nPlus haut, la route de Koka longe la crête, au-dessus des ruines de Hautfer.")
 	if b is Contremaitre:
 		show_text("Le Contremaître",
 			"La masse se défait. Wendel reconnaît des visages.\n\nLe vieux Hendrik, qui lui avait appris à tenir une pioche.\nGrete la boulangère, et ses deux fils.\nAldo, le contremaître, qui criait la cadence au fond des puits.\n\nIl les cherche tous, un par un.\nIlse n'est pas parmi eux.")
+
+
+## Parler à un personnage (haut, à côté de lui).
+func talk(id: String) -> void:
+	var t: Array = Dialogues.talk(id)
+	if t[0] == "":
+		return
+	World.save_game()
+	Sfx.play("panse", -6.0, 1.1)
+	show_text(t[0], t[1])
 
 
 func show_text(title: String, body: String) -> void:
@@ -345,17 +381,83 @@ func _play(delta: float) -> void:
 				_go_through(digit)
 				return
 
+	_update_trial(delta)
+	_update_event(delta)
+
 	# La nuit, les esprits viennent à la marque.
-	if World.is_night() and not room.spirit_points.is_empty():
+	if World.is_night() and not room.spirit_points.is_empty() and event_time < 0.0:
 		_spawn_timer -= delta
 		if _spawn_timer <= 0.0:
-			_spawn_timer = randf_range(4.0, 7.0)
+			_spawn_timer = randf_range(1.0, 2.0) if trial_time > 0.0 else randf_range(4.0, 7.0)
 			var count := 0
 			for n in room.get_children():
 				if n is Spirit and not n.daylight:
 					count += 1
-			if count < SPIRITS_PER_ROOM:
+			var most: int = 7 if trial_time > 0.0 else room.data.get("spirits", SPIRITS_PER_ROOM)
+			if count < most:
 				_spawn_spirit()
+
+
+## L'épreuve de Corvin : une nuit entière dans le cercle des tranchées.
+func _update_trial(delta: float) -> void:
+	if trial_time <= 0.0:
+		return
+	if player.is_dead():
+		trial_time = 0.0
+		doors_locked = false
+		return
+	if not room.in_salt(player.position):
+		trial_time = 0.0
+		doors_locked = false
+		banner = "Tu es sorti du cercle. Corvin le saura."
+		banner_time = 3.0
+		return
+	trial_time -= delta
+	if randf() < delta * 0.5:
+		var at := player.position + Vector2(randf_range(-260, 260), randf_range(-160, -60))
+		fx.text(at, VOICES.pick_random(), Color(0.6, 0.95, 0.9, 0.8), 14)
+	if trial_time <= 0.0:
+		trial_time = 0.0
+		doors_locked = false
+		World.flags["epreuve"] = true
+		World.wait_until(false)
+		World.save_game()
+		banner = "L'aube. Tu as tenu."
+		banner_time = 3.0
+
+
+## La première nuit dans la Lande : elle tombe d'un coup, les spectres submergent Wendel,
+## et un homme en armure noire surgit.
+func _update_event(delta: float) -> void:
+	var ev: String = room.data.get("event", "")
+	if ev != "premiere_nuit" or World.flags.has("premiere_nuit"):
+		return
+	if event_time < 0.0:
+		if player.position.x < room.data.get("event_x", 0) * TILE:
+			return
+		event_time = 0.0
+		mercy = true
+		World.wait_until(true)
+		banner = "La nuit tombe d'un coup"
+		banner_time = 3.0
+		for i in 8:
+			var s := Spirit.new()
+			s.position = player.position + Vector2(randf_range(-420, 420), randf_range(-300, -120))
+			room.add_child(s)
+		return
+	event_time += delta
+	if not is_instance_valid(_knight) and event_time > 6.0 and not World.flags.has("chevalier_vu"):
+		World.flags["chevalier_vu"] = true
+		_knight = ChevalierNoir.new()
+		_knight.position = Vector2(maxf(player.position.x - 560.0, 80.0), player.position.y)
+		room.add_child(_knight)
+	if World.flags.has("chevalier_vu") and not is_instance_valid(_knight):
+		event_time = -1.0
+		mercy = false
+		World.flags["premiere_nuit"] = true
+		World.save_game()
+		show_text("La première nuit",
+			"Un homme en armure noire. Une lame qu'aucun homme ne devrait pouvoir porter.\nIl a taillé les spectres comme on fauche, sans un regard pour toi.\n\nPuis il est reparti vers l'est, dans le noir, sans un mot.\n\nAu loin, une tour blanche, cerclée de sel. Une lumière brûle en haut.")
 
 
 func _spawn_spirit() -> void:

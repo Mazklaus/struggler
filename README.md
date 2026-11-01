@@ -5,9 +5,10 @@ Fan-game *Struggler* (Godot 4.6), encore sans graphismes. Après le prototype de
 construit la tranche verticale : le prologue, les galeries de Hautfer (Z1) et la Lande aux
 Pendus (Z2), avec le cycle jour/nuit de la marque et les premiers boss.
 
-Pour l'instant : **les galeries de Hautfer** au complet (24 salles, d'après le plan détaillé),
-le cycle de la marque, les repos, la mort et l'ombre de marqué, et le premier boss, le
-**Contremaître**. La Lande aux Pendus arrive à l'étape suivante.
+Pour l'instant : **les galeries de Hautfer** (24 salles) et **la Lande aux Pendus** (18 salles),
+d'après le plan détaillé, le cycle de la marque, les repos, la mort et l'ombre de marqué,
+Corvin et la Ruée, et les deux premiers boss, le **Contremaître** et le **Seigneur des gibets**.
+Le prologue arrive à l'étape suivante.
 
 ## Lancer le jeu
 
@@ -64,7 +65,7 @@ dans la Lande. Il faut remonter vers la surface. Une case du plan vaut un écran
 6. **Le carreau de la mine** : la grille pourrie du Grand Puits (attaque lourde chargée),
    le clocher de la mine, le monte-charge bloqué.
 7. **Le Grand Puits**, puis **la fosse du Contremaître**. Une fois le boss vaincu, la
-   **galerie d'extraction** mène vers la Lande (prochaine étape), et le passage des boiseurs
+   **galerie d'extraction** remonte au jour, dans le ravin de la Lande, et le passage des boiseurs
    ramène au brasier de la lampisterie.
 
 Les montées passent par la forme même des salles, jamais par des échelles posées là : le
@@ -95,6 +96,48 @@ tout : il faut frapper **les visages qui pleurent** (un à la fois, puis deux).
   sur une corniche. En repoussant, **tous ses visages s'ouvrent** et prennent plus cher.
 - Sous la moitié de sa vie, les visages hurlent : tout va plus vite, deux visages s'ouvrent,
   et des mineurs rampants se détachent de la masse.
+
+## La Lande aux Pendus
+
+Le plateau au-dessus de Hautfer, qu'on traverse vers l'est puis qu'on retraverse vers
+l'ouest, Ruée en poche.
+
+1. **Le ravin de sortie** : premier ciel. **La montée des charrettes** grimpe en lacets entre
+   rochers, racines et déblais ; à mi-pente, une borne de sel où se reposer.
+2. **Les premiers gibets**, **le champ des corbeaux** (les corbeaux plongent sur Wendel),
+   puis **la lande nue** : la **première nuit** tombe d'un coup, les spectres submergent
+   Wendel, et un homme en armure noire surgit, les taille et repart sans un mot (Wendel ne
+   peut pas mourir pendant la scène).
+3. **La Tour de sel** : **Corvin** soigne Wendel, lui apprend les cercles de sel, reforge
+   avec lui les pics des mineurs (les **Pics de mineur**), puis lui confie une tâche :
+   reprendre ses **sacs de sel** au **moulin des déserteurs** (soldats, un sergent, un paysan
+   en cage). On y descend par la trappe de la tour, les tranchées et la bergerie (un enfant
+   berger y attend « la bergère »).
+4. **L'épreuve** : de retour, Corvin envoie Wendel tenir une nuit seul dans le cercle des
+   **tranchées** (au repos : « Tenir la nuit »). Sortir du cercle fait échouer l'épreuve.
+   À l'aube, Corvin apprend **la Ruée**.
+5. **Le sentier des pendus** : on tire la chaîne de la herse, et il faut la Ruée au sommet du
+   saut pour franchir le fossé avant qu'elle retombe. Au-dessus, **le Grand Gibet** et son
+   boss, puis **la route de Koka**, sur la crête, vers la Vallée de Brume (fin de la tranche).
+
+Le reste de la Lande : **la faille** (un gouffre qui ne se franchit qu'avec la Ruée, sinon on
+tombe dans **la fosse commune**), **les bourbes** (la nuit, la brume monte vers une cache),
+**la cabane du bourreau** derrière un mur fissuré (son registre nomme le Seigneur des
+gibets), le promontoire et le chemin des bornes.
+
+Pas encore construites, parce qu'elles demandent une capacité qu'on n'a pas : la falaise des
+gibets (chaîne à grappin), le donjon effondré et sa salle haute (Crochet de forge), le
+cercle des pendus (Vue astrale). Un panneau les annonce dans les salles voisines.
+
+## Le Seigneur des gibets
+
+Un déserteur devenu apôtre, sous un chêne mort chargé de pendus.
+
+- **Coup de gaffe** : un balayage devant lui, après une courte préparation.
+- **Nœuds coulants** : une ombre au sol prévient, puis un nœud tombe des branches.
+- **Bond dans les branches** : il disparaît dans le chêne, suit Wendel d'en haut et retombe
+  sur lui ; à l'impact, une onde court au sol des deux côtés.
+- Sous la moitié de sa vie, **les pendus se détachent** et tombent des branches.
 
 ## Le cycle de la marque
 
@@ -155,6 +198,8 @@ Tous les réglages sont en haut des scripts, avec des commentaires :
   la lettre et du marteau).
 - `scripts/rooms_hautfer.gd` : les 24 salles de Hautfer, générées par
   `python3 tools/gen_hautfer.py` (relancer le script écrase les retouches faites à la main).
+- `scripts/rooms_lande.gd` : les 18 salles de la Lande, générées par `python3 tools/gen_lande.py`.
+- `scripts/dialogues.gd` : ce que disent Corvin, l'enfant berger et le paysan.
 - `scripts/world.gd` : durée du jour et de la nuit (`day_length`, `night_length`).
 - `scripts/main.gd` : nombre d'esprits par salle la nuit (`SPIRITS_PER_ROOM`).
 - `scripts/rampant.gd`, `scripts/spirit.gd`, `scripts/shadow.gd` : les nouveaux ennemis.
@@ -165,6 +210,7 @@ Tous les réglages sont en haut des scripts, avec des commentaires :
 godot --headless res://tests/smoke_test.tscn
 godot --headless res://tests/world_test.tscn
 godot --headless res://tests/boss_test.tscn
+godot --headless res://tests/lande_test.tscn
 ```
 
 Le premier pilote Wendel dans la salle d'essai : déplacements, Cadence, Frappe à blanc,
@@ -172,5 +218,8 @@ trempe, parcours, soldat, contre, Panser, repos et changement d'arme, Entaille, 
 mur. Le second joue une nouvelle partie : passages entre salles, repos et sauvegarde, nuit et
 esprits, brume, marteau de Gerold, treuil traversé par dessous, mur éboulé, lettre d'Ilse, mort et ombre de marqué. Le troisième vérifie le
 Contremaître, de la grille du Grand Puits jusqu'à la remontée par la cheminée de la voûte.
+Le quatrième joue la Lande : première nuit et chevalier noir, les étapes de Corvin, les sacs
+de sel, l'épreuve des tranchées, la herse (impossible sans la Ruée, possible avec) et le
+Seigneur des gibets.
 
 Fan-game privé, non commercial, d'après *Berserk* de Kentaro Miura.
