@@ -234,17 +234,26 @@ def cmd_wendel(a):
     print(json.dumps(meta))
 
 
-def trim_loop(frames):
-    """Garde le cycle le plus propre : la première image qui ressemble assez à l'image 0 ferme la boucle."""
-    if len(frames) < 6:
+def trim_loop(frames, pmin=5, pmax=24):
+    """Garde un cycle propre : cherche la période (en images) qui fait le mieux revenir le personnage
+    sur lui-même, en couleurs (pour distinguer la jambe avant de la jambe arrière), puis garde le
+    cycle qui se referme le mieux."""
+    if len(frames) < pmin * 2:
         return frames
-    small = [np.asarray(f.resize((48, 48)).getchannel("A")).astype(np.float32) for f in frames]
-    best, best_i = 1e9, len(frames)
-    for i in range(max(4, len(frames) // 3), len(frames)):
-        d = np.abs(small[i] - small[0]).mean()
-        if d < best:
-            best, best_i = d, i
-    return frames[:best_i]
+    small = [np.asarray(f.resize((64, 64))).astype(np.float32) for f in frames]
+    n = len(small)
+    best_p, best_d = None, 1e9
+    for p in range(pmin, min(pmax, n // 2) + 1):
+        d = np.mean([np.abs(small[i] - small[i + p]).mean() for i in range(n - p)])
+        if d < best_d:
+            best_p, best_d = p, d
+    best_s, best_e = 0, 1e9
+    for s0 in range(0, n - best_p):
+        e = np.abs(small[s0] - small[s0 + best_p]).mean()
+        if e < best_e:
+            best_s, best_e = s0, e
+    print(f"boucle : {best_p} images à partir de l'image {best_s} (écart {best_e:.1f})")
+    return frames[best_s:best_s + best_p]
 
 
 def main():
