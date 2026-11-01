@@ -157,53 +157,42 @@ func _build_modules(m: Dictionary) -> void:
 	for b in base:
 		texs.append(load(dir + b))
 	var cross: float = m.get("largeur", 1280.0)        # largeur couverte (hauteur si horizontal)
+	var side: float = m.get("taille", cross)            # taille d'un module en travers
 	var f: float = conf.get("parallaxe", 0.15)
 	var length := (room.size.y if vertical else room.size.x) * f + (720.0 if vertical else 1280.0) * 1.5
-	var pos := 0.0
-	var i := 0
-	var first: String = m.get("haut" if vertical else "debut", "")
-	var last: String = m.get("bas" if vertical else "fin", "")
-	var seq: Array[Texture2D] = []
-	if first != "":
-		seq.append(load(dir + first))
-	while pos < length:
-		var t: Texture2D = texs[(i * 7 + (i / texs.size()) * 3) % texs.size()]
-		seq.append(t)
-		var side: float = m.get("taille", cross)
-		pos += side * t.get_height() / t.get_width() if vertical else side * t.get_width() / t.get_height()
-		i += 1
-	if last != "":
-		seq.append(load(dir + last))
-	pos = 0.0
-	# Entre deux variantes différentes, le module suivant chevauche le précédent et s'y fond.
+	# Entre deux modules voisins, le suivant chevauche le précédent et s'y fond (dans les deux sens).
 	var fondu: float = m.get("fondu", 0.15) if texs.size() > 1 else 0.0
-	var shader: Shader = load("res://art/shaders/fondu_module.gdshader") if fondu > 0.0 else null
-	var idx := 0
-	for t in seq:
-		var sp := Sprite2D.new()
-		sp.texture = t
-		sp.centered = false
-		var k := cross / (t.get_width() if vertical else t.get_height())
-		if m.has("taille"):
-			# Module affiché petit (taille en px du monde) et répété aussi en travers :
-			# c'est ce qui donne l'effet lointain sans dépendre du cadrage de l'image.
-			k = float(m.taille) / (t.get_width() if vertical else t.get_height())
-			sp.region_enabled = true
-			sp.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
-			sp.region_rect = Rect2(0, 0, cross / k, t.get_height()) if vertical else Rect2(0, 0, t.get_width(), cross / k)
-		sp.scale = Vector2(k, k)
-		var step := t.get_height() * k if vertical else t.get_width() * k
-		if shader and idx > 0 and vertical:
-			pos -= step * fondu
+	var shader: Shader = load("res://art/shaders/fondu_module.gdshader")
+	# Grille de colonnes : chaque colonne déroule les variantes dans un ordre décalé et commence
+	# plus ou moins haut, pour que la même image ne se retrouve pas côte à côte.
+	var cols := int(ceil(cross / (side * (1.0 - fondu)))) if m.has("taille") else 1
+	for c in cols:
+		var pos := -side * 2.0 * fmod(c * 0.37, 1.0) if c > 0 else 0.0
+		var i := c * 2 + 1 if c > 0 else 0
+		var first_row := true
+		while pos < length:
+			var t: Texture2D = texs[(i * 7 + (i / texs.size()) * 3) % texs.size()]
+			i += 1
+			var sp := Sprite2D.new()
+			sp.texture = t
+			sp.centered = false
+			var k := side / (t.get_width() if vertical else t.get_height())
+			sp.scale = Vector2(k, k)
+			var step := t.get_height() * k if vertical else t.get_width() * k
+			var cross_pos := c * side * (1.0 - fondu)
+			if not first_row:
+				pos -= step * fondu
 			var mat := ShaderMaterial.new()
 			mat.shader = shader
-			mat.set_shader_parameter("fondu", fondu)
+			mat.set_shader_parameter("fondu", 0.0 if first_row else fondu * 1.0)
+			mat.set_shader_parameter("fondu_x", 0.0 if c == 0 else fondu)
+			mat.set_shader_parameter("vertical", vertical)
 			sp.material = mat
-		sp.position = Vector2(0, pos) if vertical else Vector2(pos, 0)
-		_mods.add_child(sp)
-		pos += step
-		idx += 1
-	_mod_len = pos
+			sp.position = Vector2(cross_pos, pos) if vertical else Vector2(pos, cross_pos)
+			_mods.add_child(sp)
+			pos += step
+			first_row = false
+		_mod_len = maxf(_mod_len, pos)
 
 
 func _process(_delta: float) -> void:
