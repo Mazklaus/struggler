@@ -21,6 +21,7 @@ var state := S.PATROL
 var facing := -1
 var hp := 18
 var guard_up := false
+var sergeant := false   # le sergent des déserteurs : plus solide, plus rapide à frapper
 
 var _t := 0.0
 var _spawn := Vector2.ZERO
@@ -39,6 +40,11 @@ var _bleed_tick := 0.0
 
 
 func _ready() -> void:
+	if sergeant:
+		max_hp = 34
+		guard_limit = 6
+		windup_time = 0.4
+		chase_speed = 115.0
 	hp = max_hp
 	_spawn = position
 	add_to_group("hittable")
@@ -285,7 +291,7 @@ func _draw() -> void:
 		if _t < 1.0:
 			draw_rect(Rect2(-BODY.y * 0.5, BODY.y * 0.5 - 14, BODY.y, 14), Color(0.35, 0.2, 0.2, 1.0 - _t))
 		return
-	var col := Color(0.55, 0.5, 0.58)
+	var col := Color(0.62, 0.42, 0.38) if sergeant else Color(0.55, 0.5, 0.58)
 	if _flash > 0.0:
 		col = Color(1, 1, 1)
 	elif _burn > 0.0:

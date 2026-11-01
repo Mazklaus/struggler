@@ -209,6 +209,8 @@ func _st_normal(delta: float) -> void:
 		if not rest.is_empty():
 			velocity = Vector2.ZERO
 			Game.inst.open_rest(rest.kind)
+		elif Game.inst.room.interact(get_hurt_rect()):
+			velocity.x = 0.0
 
 
 func _st_attack(delta: float) -> void:
@@ -835,6 +837,8 @@ func _hurt(damage: int, from: Vector2, hazard: bool) -> void:
 	if state == S.HEAL:
 		Game.inst.fx.text(position + Vector2(0, -70), "Bandage gâché", Color(0.8, 0.3, 0.3), 14)
 	hp -= damage
+	if Game.inst.mercy and hp < 1:
+		hp = 1   # une scène qui ne doit pas finir ici (la première nuit dans la Lande)
 	rage = minf(rage + 12.0, max_rage)   # plus il souffre, plus il devient dangereux
 	_invuln = 1.0
 	Sfx.play("blesse")

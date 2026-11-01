@@ -6,6 +6,8 @@ extends Node2D
 
 var solids: Array[Rect2] = []
 var solid_mats: Array[String] = []
+var outdoor := false
+var hanged: Array[Vector2] = []
 var labels: Array = []
 var water: Array[Rect2] = []
 var hazards: Array[Rect2] = []
@@ -27,12 +29,19 @@ var _t := 0.0
 
 func _process(delta: float) -> void:
 	_t += delta
-	if not mist.is_empty() or not rests.is_empty():
+	if not mist.is_empty() or not rests.is_empty() or not hanged.is_empty():
 		queue_redraw()
 
 
 func _draw() -> void:
 	var night := World.night_amount()
+	if outdoor:
+		# Le ciel bas de la Lande, du gris au violet ; la nuit l'assombrit par la teinte.
+		var vr := get_viewport_rect()
+		var room_size: Vector2 = Game.inst.room.size if is_instance_valid(Game.inst.room) else vr.size
+		for i in 8:
+			var band := Rect2(0, room_size.y * i / 8.0, room_size.x, room_size.y / 8.0 + 1.0)
+			draw_rect(band, Color(0.26, 0.25, 0.3).lerp(Color(0.16, 0.15, 0.18), i / 8.0))
 	for i in solids.size():
 		_draw_block(solids[i], solid_mats[i] if i < solid_mats.size() else "roche")
 	for r in wells:
@@ -64,6 +73,14 @@ func _draw() -> void:
 		for i in 3:
 			var wx := r.position.x + fmod(_t * 18.0 + i * 37.0, r.size.x)
 			draw_circle(Vector2(wx, r.position.y + 6 + sin(_t * 2.0 + i) * 3.0), 5.0, Color(c.r, c.g, c.b, c.a * 0.5))
+	for h in hanged:
+		# un pendu : la corde, le corps qui tourne doucement
+		var sw := sin(_t * 0.8 + h.x * 0.01) * 3.0
+		draw_line(h, h + Vector2(sw, 22), Color(0.55, 0.45, 0.3), 2.0)
+		draw_circle(h + Vector2(sw, 28), 7.0, Color(0.42, 0.4, 0.38))
+		draw_rect(Rect2(h + Vector2(sw - 8, 34), Vector2(16, 30)), Color(0.32, 0.29, 0.26))
+		draw_line(h + Vector2(sw - 4, 64), h + Vector2(sw - 5, 80), Color(0.3, 0.27, 0.24), 4.0)
+		draw_line(h + Vector2(sw + 4, 64), h + Vector2(sw + 5, 80), Color(0.3, 0.27, 0.24), 4.0)
 	for c in corpses:
 		draw_rect(Rect2(c + Vector2(-16, -8), Vector2(32, 8)), Color(0.4, 0.36, 0.33))
 		draw_circle(c + Vector2(-12, -9), 5.0, Color(0.45, 0.4, 0.36))
@@ -94,6 +111,8 @@ func _draw() -> void:
 ## Un bloc plein, selon sa matière. Tout reste sommaire : une teinte et un motif suffisent à lire le volume.
 func _draw_block(r: Rect2, mat: String) -> void:
 	match mat:
+		"ciel":
+			pass
 		"bois":
 			draw_rect(r, Color(0.4, 0.31, 0.22))
 			var y := r.position.y + 10.0
