@@ -175,6 +175,10 @@ func _build_modules(m: Dictionary) -> void:
 	if last != "":
 		seq.append(load(dir + last))
 	pos = 0.0
+	# Entre deux variantes différentes, le module suivant chevauche le précédent et s'y fond.
+	var fondu: float = m.get("fondu", 0.15) if texs.size() > 1 else 0.0
+	var shader: Shader = load("res://art/shaders/fondu_module.gdshader") if fondu > 0.0 else null
+	var idx := 0
 	for t in seq:
 		var sp := Sprite2D.new()
 		sp.texture = t
@@ -188,9 +192,17 @@ func _build_modules(m: Dictionary) -> void:
 			sp.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 			sp.region_rect = Rect2(0, 0, cross / k, t.get_height()) if vertical else Rect2(0, 0, t.get_width(), cross / k)
 		sp.scale = Vector2(k, k)
+		var step := t.get_height() * k if vertical else t.get_width() * k
+		if shader and idx > 0 and vertical:
+			pos -= step * fondu
+			var mat := ShaderMaterial.new()
+			mat.shader = shader
+			mat.set_shader_parameter("fondu", fondu)
+			sp.material = mat
 		sp.position = Vector2(0, pos) if vertical else Vector2(pos, 0)
 		_mods.add_child(sp)
-		pos += t.get_height() * k if vertical else t.get_width() * k
+		pos += step
+		idx += 1
 	_mod_len = pos
 
 

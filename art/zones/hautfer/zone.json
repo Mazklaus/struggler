@@ -86,7 +86,8 @@
 				"largeur": 1400,
 				"taille": 420,
 				"base": [
-					"modules/puits_paroi_a.jpg"
+					"modules/puits_paroi_a.jpg",
+					"modules/puits_paroi_b.jpg"
 				]
 			}
 		}
