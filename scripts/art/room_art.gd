@@ -12,6 +12,8 @@ var room: Room
 var conf := {}
 var dir := ""
 var _bg: Sprite2D
+var _mods: Node2D            # fond en modules répétés (voir _build_modules)
+var _mod_len := 0.0
 var _blocks: ColorRect
 var _haze: ColorRect
 var _maps_task := -1
@@ -37,6 +39,9 @@ func setup(r: Room, zone_dir: String, zone: Dictionary, salle: Dictionary) -> vo
 		_bg.region_enabled = true
 		_bg.z_index = -30
 		add_child(_bg)
+
+	if salle.has("fond_modules"):
+		_build_modules(salle.fond_modules)
 
 	_haze = ColorRect.new()
 	_haze.size = room.size
@@ -135,6 +140,52 @@ func apply(on: bool) -> void:
 	deco.queue_redraw()
 
 
+## Fond fait de modules : un morceau de décor à la bonne échelle, qui se raccorde à lui-même
+## dans l'axe de la salle (vertical pour un puits, horizontal pour une galerie). Plusieurs variantes
+## se succèdent dans un ordre fixe mais sans motif visible ; « haut » et « bas » (ou « debut » et
+## « fin ») ferment la pile. La taille d'un module est fixée en pixels du monde : c'est elle qui
+## règle l'échelle du fond par rapport à Wendel, quelle que soit la taille de la salle.
+func _build_modules(m: Dictionary) -> void:
+	_mods = Node2D.new()
+	_mods.z_index = -30
+	add_child(_mods)
+	var vertical: bool = m.get("axe", "vertical") == "vertical"
+	var base: Array = m.get("base", [])
+	if base.is_empty():
+		return
+	var texs: Array[Texture2D] = []
+	for b in base:
+		texs.append(load(dir + b))
+	var cross: float = m.get("largeur", 1280.0)        # largeur couverte (hauteur si horizontal)
+	var f: float = conf.get("parallaxe", 0.15)
+	var length := (room.size.y if vertical else room.size.x) * f + (720.0 if vertical else 1280.0) * 1.5
+	var pos := 0.0
+	var i := 0
+	var first: String = m.get("haut" if vertical else "debut", "")
+	var last: String = m.get("bas" if vertical else "fin", "")
+	var seq: Array[Texture2D] = []
+	if first != "":
+		seq.append(load(dir + first))
+	while pos < length:
+		var t: Texture2D = texs[(i * 7 + (i / texs.size()) * 3) % texs.size()]
+		seq.append(t)
+		pos += cross * t.get_height() / t.get_width() if vertical else cross * t.get_width() / t.get_height()
+		i += 1
+	if last != "":
+		seq.append(load(dir + last))
+	pos = 0.0
+	for t in seq:
+		var sp := Sprite2D.new()
+		sp.texture = t
+		sp.centered = false
+		var k := cross / (t.get_width() if vertical else t.get_height())
+		sp.scale = Vector2(k, k)
+		sp.position = Vector2(0, pos) if vertical else Vector2(pos, 0)
+		_mods.add_child(sp)
+		pos += t.get_height() * k if vertical else t.get_width() * k
+	_mod_len = pos
+
+
 func _process(_delta: float) -> void:
 	if _maps_task >= 0 and WorkerThreadPool.is_task_completed(_maps_task):
 		WorkerThreadPool.wait_for_task_completion(_maps_task)
@@ -144,7 +195,7 @@ func _process(_delta: float) -> void:
 		m.set_shader_parameter("mat_tex", ImageTexture.create_from_image(_maps[1]))
 		_blocks.visible = true
 		apply(_on)
-	if not visible or _bg == null:
+	if not visible or (_bg == null and _mods == null):
 		return
 	var cam := get_viewport().get_camera_2d()
 	if cam == null:
@@ -156,6 +207,21 @@ func _process(_delta: float) -> void:
 	# S'il est plus grand que nécessaire (image verticale dans une salle étroite), il défile
 	# juste assez pour qu'on en voie le haut en haut de la salle et le bas en bas.
 	var travel := (room.size - view).max(Vector2.ZERO)
+	if _mods:
+		# Les modules défilent à la fraction f de la caméra ; centrés dans l'autre axe.
+		var fm: float = conf.get("parallaxe", 0.15)
+		var vertical: bool = conf.fond_modules.get("axe", "vertical") == "vertical"
+		var cross: float = conf.fond_modules.get("largeur", 1280.0)
+		var c := cam.get_screen_center_position()
+		if vertical:
+			_mods.position = Vector2(c.x - cross * 0.5, tl.y * (1.0 - fm))
+		else:
+			_mods.position = Vector2(tl.x * (1.0 - fm), c.y - cross * 0.5)
+		_mods.modulate = Color(1, 1, 1).lerp(Color(0.55, 0.6, 0.8), World.night_amount())
+	if _bg == null:
+		if _blocks.material:
+			(_blocks.material as ShaderMaterial).set_shader_parameter("night", World.night_amount())
+		return
 	var need := view + travel * f
 	var tex := _bg.texture.get_size()
 	var k := maxf(need.y / tex.y, need.x / tex.x)

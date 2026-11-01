@@ -6,6 +6,7 @@ Les images Midjourney arrivent souvent en grille de 4 : --quart 1..4 choisit la 
 (1 haut gauche, 2 haut droite, 3 bas gauche, 4 bas droite), 0 = l'image entière.
 
   fond     : fond peint pour la parallaxe (recadré, étalonné, réduit).
+  module   : morceau de fond qui se répète dans un axe (puits, galerie), raccordé à lui-même.
   matiere  : texture de matière qui se répète sans couture (512 px = 8 tuiles de jeu au double).
   decor    : objet sur fond uni -> détouré, rogné.
   wendel   : vidéo d'une animation -> images à 12 i/s, détourées, recalées sur les pieds,
@@ -172,6 +173,37 @@ def cmd_matiere(a):
     save(im.convert("RGB"), a.out)
 
 
+# --- Module de fond ---------------------------------------------------------
+
+def seamless_axis(im, vertical=True, blend=0.18):
+    """Raccorde un module à lui-même dans un seul axe : le bas se fond dans le haut (ou la droite
+    dans la gauche) sur une bande de blend, puis on retire cette bande."""
+    a = np.asarray(im.convert("RGB")).astype(np.float32)
+    if not vertical:
+        a = a.transpose(1, 0, 2)
+    h = a.shape[0]
+    b = int(h * blend)
+    w = np.linspace(0, 1, b)[:, None, None]
+    out = a[: h - b].copy()
+    out[:b] = a[h - b:] * (1 - w) + a[:b] * w
+    if not vertical:
+        out = out.transpose(1, 0, 2)
+    return Image.fromarray(out.clip(0, 255).astype(np.uint8), "RGB")
+
+
+def cmd_module(a):
+    im = crop_frac(load(a.src, a.quart), a.crop)
+    if not a.deja_raccord:
+        im = seamless_axis(im, a.axe == "vertical")
+    side = a.largeur
+    if a.axe == "vertical":
+        im = im.resize((side, round(im.height * side / im.width)), Image.LANCZOS)
+    else:
+        im = im.resize((round(im.width * side / im.height), side), Image.LANCZOS)
+    im = grade(im.convert("RGBA"), sat=a.sat, gain=a.gain, lift=a.lift)
+    save(im, a.out)
+
+
 # --- Décor ------------------------------------------------------------------
 
 def cmd_decor(a):
@@ -307,6 +339,11 @@ def main():
     sp.add_argument("--taille", type=int, default=512)
     sp.add_argument("--deja-raccord", action="store_true", help="image déjà faite avec --tile")
     sp.set_defaults(fn=cmd_matiere)
+    sp = sub.add_parser("module"); common(sp)
+    sp.add_argument("--axe", choices=["vertical", "horizontal"], default="vertical")
+    sp.add_argument("--largeur", type=int, default=1024, help="côté perpendiculaire à l'axe, en px")
+    sp.add_argument("--deja-raccord", action="store_true")
+    sp.set_defaults(fn=cmd_module)
     sp = sub.add_parser("decor"); common(sp)
     sp.add_argument("--hauteur", type=int, default=0)
     sp.add_argument("--tol", type=float, default=38.0)
