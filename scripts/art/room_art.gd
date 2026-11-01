@@ -169,7 +169,8 @@ func _build_modules(m: Dictionary) -> void:
 	while pos < length:
 		var t: Texture2D = texs[(i * 7 + (i / texs.size()) * 3) % texs.size()]
 		seq.append(t)
-		pos += cross * t.get_height() / t.get_width() if vertical else cross * t.get_width() / t.get_height()
+		var side: float = m.get("taille", cross)
+		pos += side * t.get_height() / t.get_width() if vertical else side * t.get_width() / t.get_height()
 		i += 1
 	if last != "":
 		seq.append(load(dir + last))
@@ -179,6 +180,13 @@ func _build_modules(m: Dictionary) -> void:
 		sp.texture = t
 		sp.centered = false
 		var k := cross / (t.get_width() if vertical else t.get_height())
+		if m.has("taille"):
+			# Module affiché petit (taille en px du monde) et répété aussi en travers :
+			# c'est ce qui donne l'effet lointain sans dépendre du cadrage de l'image.
+			k = float(m.taille) / (t.get_width() if vertical else t.get_height())
+			sp.region_enabled = true
+			sp.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+			sp.region_rect = Rect2(0, 0, cross / k, t.get_height()) if vertical else Rect2(0, 0, t.get_width(), cross / k)
 		sp.scale = Vector2(k, k)
 		sp.position = Vector2(0, pos) if vertical else Vector2(pos, 0)
 		_mods.add_child(sp)

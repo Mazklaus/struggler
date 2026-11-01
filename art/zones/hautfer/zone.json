@@ -43,8 +43,7 @@
 			]
 		},
 		"h23_grand_puits": {
-			"fond": "fonds/grand_puits.jpg",
-			"parallaxe": 0.04,
+			"parallaxe": 0.3,
 			"palette": {
 				"encre": "0c171c",
 				"ombre": "2a2a3c",
@@ -81,7 +80,15 @@
 					"y": 5.5,
 					"echelle": 0.5
 				}
-			]
+			],
+			"fond_modules": {
+				"axe": "vertical",
+				"largeur": 1400,
+				"taille": 420,
+				"base": [
+					"modules/puits_paroi_a.jpg"
+				]
+			}
 		}
 	}
 }
