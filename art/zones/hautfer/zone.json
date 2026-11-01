@@ -32,6 +32,13 @@
 					"x": 92,
 					"y": 19,
 					"echelle": 0.5
+				},
+				{
+					"image": "decors/brasero.png",
+					"x": 60,
+					"y": 19,
+					"echelle": 0.5,
+					"lumiere": true
 				}
 			]
 		},

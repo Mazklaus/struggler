@@ -41,12 +41,26 @@ func set_enabled(on: bool) -> void:
 	for n in get_tree().get_nodes_in_group("room_art"):
 		(n as RoomArt).apply(on)
 		any = true
+	for n in get_tree().get_nodes_in_group("wendel_art"):
+		(n as WendelArt).show_art(on)
 	_paper.visible = on and any
 
 
 func _on_node_added(node: Node) -> void:
 	if node is Room and enabled_at_all():
 		_dress.call_deferred(node)
+	elif node is Player and enabled_at_all() and WendelArt.available():
+		_dress_player.call_deferred(node)
+
+
+func _dress_player(p: Player) -> void:
+	if not is_instance_valid(p) or p.has_node("WendelArt"):
+		return
+	var w := WendelArt.new()
+	w.add_to_group("wendel_art")
+	p.add_child(w)
+	w.setup(p)
+	w.show_art(enabled)
 
 
 func enabled_at_all() -> bool:
