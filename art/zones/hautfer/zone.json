@@ -44,7 +44,7 @@
 		},
 		"h23_grand_puits": {
 			"fond": "fonds/grand_puits.jpg",
-			"parallaxe": 0.12,
+			"parallaxe": 0.04,
 			"palette": {
 				"encre": "0c171c",
 				"ombre": "2a2a3c",

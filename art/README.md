@@ -21,6 +21,7 @@ objets restent ceux des salles grises. **F2** bascule entre la DA et le gris.
 - Écran de référence 1280×720, tuile de 32 px ; l'art est produit au double (64 px par tuile).
 - Noms en minuscules, sans accent.
 - Tout passe par `tools/art/art.py` (relançable) : `fond`, `matiere`, `decor`, `wendel`. Voir `--help`.
+- Détourage par IA : `pip install "rembg[cpu]"` ; BiRefNet (~1 Go) pour les décors, ISNet pour les images de Wendel. Les modèles se téléchargent au premier usage.
 
 ## Palette d'une salle (zone.json)
 

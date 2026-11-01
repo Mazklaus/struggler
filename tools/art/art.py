@@ -101,6 +101,31 @@ def key_background(im, tol=38.0, feather=1.5):
     return out
 
 
+_SESSION = None
+_MODEL = "birefnet-general"
+
+
+def key_ai(im):
+    """Détourage par IA (rembg + BiRefNet) : bords nets, ombres portées et sol retirés.
+    Le modèle (~1 Go) se télécharge au premier usage dans ~/.u2net. Sans rembg, on retombe
+    sur le détourage par couleur de fond."""
+    global _SESSION
+    try:
+        from rembg import new_session, remove
+    except ImportError:
+        print("rembg absent (pip install \"rembg[cpu]\") : détourage par couleur de fond")
+        return key_background(im)
+    if _SESSION is None:
+        _SESSION = new_session(_MODEL)
+    return remove(im.convert("RGBA"), session=_SESSION)
+
+
+def cut(im, a):
+    global _MODEL
+    _MODEL = getattr(a, "modele", _MODEL)
+    return key_background(im, a.tol) if a.detourage == "couleur" else key_ai(im)
+
+
 def trim(im, pad=4):
     box = im.getchannel("A").point(lambda v: 255 if v > 24 else 0).getbbox()
     if not box:
@@ -151,7 +176,7 @@ def cmd_matiere(a):
 
 def cmd_decor(a):
     im = crop_frac(load(a.src, a.quart), a.crop)
-    im = trim(key_background(im, a.tol))
+    im = trim(cut(im, a))
     if a.hauteur:
         im = im.resize((round(im.width * a.hauteur / im.height), a.hauteur), Image.LANCZOS)
     im = grade(im, sat=a.sat, gain=a.gain, lift=a.lift)
@@ -200,9 +225,17 @@ def cmd_wendel(a):
         paths = extract_frames(a.src, a.fps, tmp)
         if a.debut or a.fin:
             paths = paths[a.debut: (a.fin or len(paths))]
-        cut = [key_background(Image.open(p).convert("RGBA"), a.tol) for p in paths]
-    anchors = [feet_anchor(np.asarray(c.getchannel("A"))) for c in cut]
-    good = [(c, an) for c, an in zip(cut, anchors) if an]
+        raw = [Image.open(p).convert("RGBA") for p in paths]
+        for r in raw:
+            r.load()
+    # Choix de la boucle sur un détourage rapide, puis détourage soigné des seules images gardées.
+    quick = [key_background(r, a.tol) for r in raw]
+    keep = list(range(len(raw)))
+    if a.boucle:
+        keep = trim_loop_idx(quick)
+    cutf = [cut(raw[i], a) for i in keep]
+    anchors = [feet_anchor(np.asarray(c.getchannel("A"))) for c in cutf]
+    good = [(c, an) for c, an in zip(cutf, anchors) if an]
     if not good:
         sys.exit("aucun personnage trouvé : fond trop chargé ?")
     # Même échelle : la taille médiane du personnage devient a.hauteur (pieds à la tête, repos).
@@ -216,8 +249,6 @@ def cmd_wendel(a):
         f = Image.new("RGBA", (W, H))
         f.alpha_composite(c, (round(foot[0] - cx * k), round(foot[1] - by * k)))
         frames.append(f)
-    if a.boucle:
-        frames = trim_loop(frames)
     if a.couleurs:
         frames = quantize_palette(frames, a.couleurs)
     os.makedirs(a.out, exist_ok=True)
@@ -234,12 +265,12 @@ def cmd_wendel(a):
     print(json.dumps(meta))
 
 
-def trim_loop(frames, pmin=5, pmax=24):
+def trim_loop_idx(frames, pmin=5, pmax=24):
     """Garde un cycle propre : cherche la période (en images) qui fait le mieux revenir le personnage
     sur lui-même, en couleurs (pour distinguer la jambe avant de la jambe arrière), puis garde le
     cycle qui se referme le mieux."""
     if len(frames) < pmin * 2:
-        return frames
+        return list(range(len(frames)))
     small = [np.asarray(f.resize((64, 64))).astype(np.float32) for f in frames]
     n = len(small)
     best_p, best_d = None, 1e9
@@ -253,7 +284,7 @@ def trim_loop(frames, pmin=5, pmax=24):
         if e < best_e:
             best_s, best_e = s0, e
     print(f"boucle : {best_p} images à partir de l'image {best_s} (écart {best_e:.1f})")
-    return frames[best_s:best_s + best_p]
+    return list(range(best_s, best_s + best_p))
 
 
 def main():
@@ -279,6 +310,7 @@ def main():
     sp = sub.add_parser("decor"); common(sp)
     sp.add_argument("--hauteur", type=int, default=0)
     sp.add_argument("--tol", type=float, default=38.0)
+    sp.add_argument("--detourage", choices=["ia", "couleur"], default="ia")
     sp.set_defaults(fn=cmd_decor)
     sp = sub.add_parser("wendel")
     sp.add_argument("src"); sp.add_argument("out")
@@ -288,7 +320,9 @@ def main():
     sp.add_argument("--debut", type=int, default=0)
     sp.add_argument("--fin", type=int, default=0)
     sp.add_argument("--boucle", action="store_true")
+    sp.add_argument("--detourage", choices=["ia", "couleur"], default="ia")
     sp.add_argument("--couleurs", type=int, default=48)
+    sp.add_argument("--modele", default="isnet-general-use", help="modèle rembg (plus léger que BiRefNet pour les vidéos)")
     sp.set_defaults(fn=cmd_wendel)
     a = p.parse_args()
     a.fn(a)
