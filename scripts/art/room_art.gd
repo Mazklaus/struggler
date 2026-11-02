@@ -28,6 +28,8 @@ func setup(r: Room, zone_dir: String, zone: Dictionary, salle: Dictionary) -> vo
 	name = "RoomArt"
 	z_index = -10
 	z_as_relative = false
+	# Fonds, modules et décors sont réduits à l'écran : mipmaps pour éviter le crénelage.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	var ambs: Dictionary = zone.get("ambiances", {})
 	var main: Dictionary = ambs.get(salle.get("ambiance", ""), salle)
 	var pal: Dictionary = salle.get("palette", main.get("palette", {}))

@@ -236,6 +236,20 @@ def feet_anchor(alpha):
     return float(cx), float(bottom), float(bottom - top)
 
 
+MAX_TEX = 8192   # plus grande texture sûre ; au-delà, la planche passe à la ligne
+
+
+def write_sheet(frames, W, H, path):
+    """Planche en grille (colonnes puis lignes), pour rester sous MAX_TEX en haute définition."""
+    cols = max(1, min(len(frames), MAX_TEX // W))
+    rows = (len(frames) + cols - 1) // cols
+    sheet = Image.new("RGBA", (W * cols, H * rows))
+    for i, f in enumerate(frames):
+        sheet.alpha_composite(f, ((i % cols) * W, (i // cols) * H))
+    save(sheet, path)
+    return cols
+
+
 def quantize_palette(frames, colors):
     """Palette commune à toutes les images : couleurs stables, le trait ne scintille plus."""
     sheet = Image.new("RGB", (sum(f.width for f in frames), max(f.height for f in frames)))
@@ -284,12 +298,8 @@ def cmd_wendel(a):
     if a.couleurs:
         frames = quantize_palette(frames, a.couleurs)
     os.makedirs(a.out, exist_ok=True)
-    sheet = Image.new("RGBA", (W * len(frames), H))
-    for i, f in enumerate(frames):
-        sheet.alpha_composite(f, (i * W, 0))
-    sheet_path = a.out.rstrip("/") + ".png"
-    save(sheet, sheet_path)
-    meta = {"images": len(frames), "largeur": W, "hauteur": H, "fps": a.fps,
+    cols = write_sheet(frames, W, H, a.out.rstrip("/") + ".png")
+    meta = {"images": len(frames), "largeur": W, "hauteur": H, "colonnes": cols, "fps": a.fps,
             "appui": list(foot), "boucle": bool(a.boucle), "echelle_jeu": 1.0 / SCALE,
             "taille": a.hauteur}   # pieds -> tête en px dans la planche ; le jeu en déduit l'échelle
     with open(a.out.rstrip("/") + ".json", "w") as fh:
@@ -369,7 +379,8 @@ def cmd_poses(a):
     from PIL import ImageDraw
     spec = json.load(open(a.spec))
     base = os.path.dirname(a.spec) if not a.sources else a.sources
-    s_ref = spec["taille_ref"] / spec["hauteur_ref"]
+    # taille_ref : hauteur (cheveux compris) d'une pose debout pour une planche de 112 px.
+    s_ref = spec["taille_ref"] / spec["hauteur_ref"] * a.hauteur / 112.0
     W = H = int(a.hauteur * 1.9)
     foot = (W // 2, int(H * 0.92))
     frames, mains, angles, noms = [], [], [], []
@@ -413,11 +424,8 @@ def cmd_poses(a):
         noms.append(nom)
     if a.couleurs:
         frames = quantize_palette(frames, a.couleurs)
-    sheet = Image.new("RGBA", (W * len(frames), H))
-    for i, f in enumerate(frames):
-        sheet.alpha_composite(f, (i * W, 0))
-    save(sheet, a.out.rstrip("/") + ".png")
-    meta = {"images": len(frames), "largeur": W, "hauteur": H, "appui": list(foot), "taille": a.hauteur,
+    cols = write_sheet(frames, W, H, a.out.rstrip("/") + ".png")
+    meta = {"images": len(frames), "largeur": W, "hauteur": H, "colonnes": cols, "appui": list(foot), "taille": a.hauteur,
             "echelle_jeu": 1.0 / SCALE, "poses": noms, "mains": mains, "angles": angles}
     with open(a.out.rstrip("/") + ".json", "w") as fh:
         json.dump(meta, fh, indent=1)
@@ -457,20 +465,20 @@ def main():
     sp = sub.add_parser("wendel")
     sp.add_argument("src"); sp.add_argument("out")
     sp.add_argument("--fps", type=int, default=12)
-    sp.add_argument("--hauteur", type=int, default=112, help="taille du personnage en px (56 px en jeu, au double)")
+    sp.add_argument("--hauteur", type=int, default=336, help="taille du personnage en px dans la planche (le jeu réduit : 62 px à l'échelle 1, net jusqu'en 4K)")
     sp.add_argument("--tol", type=float, default=38.0)
     sp.add_argument("--debut", type=int, default=0)
     sp.add_argument("--fin", type=int, default=0)
     sp.add_argument("--boucle", action="store_true")
     sp.add_argument("--detourage", choices=["ia", "couleur"], default="ia")
-    sp.add_argument("--couleurs", type=int, default=48)
+    sp.add_argument("--couleurs", type=int, default=128)
     sp.add_argument("--modele", default="isnet-general-use", help="modèle rembg (plus léger que BiRefNet pour les vidéos)")
     sp.set_defaults(fn=cmd_wendel)
     sp = sub.add_parser("poses", help="poses clés d'une attaque -> planche + main et angle de l'arme")
     sp.add_argument("spec"); sp.add_argument("out")
     sp.add_argument("--sources", default="", help="dossier des images MJ (sinon celui du fichier de poses)")
-    sp.add_argument("--hauteur", type=int, default=112)
-    sp.add_argument("--couleurs", type=int, default=48)
+    sp.add_argument("--hauteur", type=int, default=336)
+    sp.add_argument("--couleurs", type=int, default=0)
     sp.add_argument("--cache", default="/tmp/art-poses", help="détourages déjà faits")
     sp.add_argument("--une-seule", action="store_true", help="s'arrêter après chaque nouveau détourage")
     sp.set_defaults(fn=cmd_poses)

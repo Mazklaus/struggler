@@ -55,6 +55,8 @@ func setup(p: Player) -> void:
 		_trainee = Trainee.new()
 		add_child(_trainee)
 	region_enabled = true
+	# Planches en haute définition réduites à l'écran : mipmaps pour un trait net, sans crénelage.
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_play("repos")
 
 
@@ -84,7 +86,7 @@ func _process(delta: float) -> void:
 	var i := int(_t * float(m.fps))
 	i = i % n if m.get("boucle", true) else mini(i, n - 1)
 	var k: float = HAUTEUR_M * Room.TILE / float(m.taille) if m.has("taille") else float(m.get("echelle_jeu", 0.5))
-	region_rect = Rect2(i * float(m.largeur), 0, float(m.largeur), float(m.hauteur))
+	region_rect = _frame_rect(m, i)
 	scale = Vector2(k * player.facing, k)
 	# Le point d'appui de la planche (pieds) se pose sous les pieds du Player.
 	position = Vector2(-float(m.appui[0]) * k * player.facing, BODY_H * 0.5 - float(m.appui[1]) * k)
@@ -118,7 +120,7 @@ func _attack_pose() -> bool:
 	_pose = i
 	texture = m.tex
 	var k := HAUTEUR_M * Room.TILE / float(m.taille)
-	region_rect = Rect2(i * float(m.largeur), 0, float(m.largeur), float(m.hauteur))
+	region_rect = _frame_rect(m, i)
 	scale = Vector2(k * player.facing, k)
 	position = Vector2(-float(m.appui[0]) * k * player.facing, BODY_H * 0.5 - float(m.appui[1]) * k)
 	# L'arme : longueur réelle en mètres, convertie en pixels de planche.
@@ -132,7 +134,7 @@ func _attack_pose() -> bool:
 	if t >= a.windup and not _trainee.active:
 		var tete := func(j: int) -> Vector2:
 			return Vector2(m.mains[j][0], m.mains[j][1]) + Vector2.from_angle(deg_to_rad(float(m.angles[j]))) * ARME_LONGUEUR_M * px_m * 0.92
-		_trainee.start(tete.call(names.find("arme")), tete.call(names.find("impact")), a.get("blanc", false))
+		_trainee.start(tete.call(names.find("arme")), tete.call(names.find("impact")), a.get("blanc", false), float(m.taille) / 112.0)
 	return true
 
 
@@ -143,9 +145,11 @@ class Trainee extends Node2D:
 	var _b := Vector2.ZERO
 	var _t := 0.0
 	var _blanc := false
+	var _u := 1.0          # taille de la planche / 112 (les mesures ci-dessous sont pour 112 px)
 	const DUREE := 0.16
 
-	func start(from: Vector2, to: Vector2, blanc: bool) -> void:
+	func start(from: Vector2, to: Vector2, blanc: bool, u: float) -> void:
+		_u = u
 		active = true
 		_a = from
 		_b = to
@@ -167,7 +171,7 @@ class Trainee extends Node2D:
 
 	func _draw() -> void:
 		var f := clampf(_t / DUREE, 0.0, 1.0)
-		var ctrl := (_a + _b) * 0.5 + Vector2(10, -70)
+		var ctrl := (_a + _b) * 0.5 + Vector2(10, -70) * _u
 		var n := 14
 		var pts_out := PackedVector2Array()
 		var pts_in := PackedVector2Array()
@@ -177,7 +181,7 @@ class Trainee extends Node2D:
 			var nxt := _a.lerp(ctrl, minf(u + 0.01, 1.0)).lerp(ctrl.lerp(_b, minf(u + 0.01, 1.0)), minf(u + 0.01, 1.0))
 			var tan := (nxt - p).normalized() if j < n else (_b - ctrl).normalized()
 			var nor := Vector2(-tan.y, tan.x)
-			var w := 16.0 * u * (1.0 - f * 0.6)     # fine à l'arrière, épaisse à l'impact
+			var w := 16.0 * _u * u * (1.0 - f * 0.6)     # fine à l'arrière, épaisse à l'impact
 			pts_out.append(p + nor * w * 0.5)
 			pts_in.append(p - nor * w * 0.5)
 		pts_in.reverse()
@@ -185,4 +189,10 @@ class Trainee extends Node2D:
 		var ink := Color(0.08, 0.05, 0.07, 0.85 * (1.0 - f))
 		var ember := Color(1.0, 0.85, 0.6, 0.9 * (1.0 - f)) if _blanc else Color(0.95, 0.55, 0.25, 0.7 * (1.0 - f))
 		draw_colored_polygon(poly, ink)
-		draw_polyline(pts_out, ember, 2.0, true)
+		draw_polyline(pts_out, ember, 2.0 * _u, true)
+
+
+## Rectangle de l'image i dans une planche en grille (« colonnes » ; une seule ligne sinon).
+func _frame_rect(m: Dictionary, i: int) -> Rect2:
+	var cols := int(m.get("colonnes", m.images))
+	return Rect2((i % cols) * float(m.largeur), (i / cols) * float(m.hauteur), float(m.largeur), float(m.hauteur))

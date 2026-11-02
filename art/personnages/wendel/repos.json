@@ -1,13 +1,14 @@
 {
  "images": 15,
- "largeur": 212,
- "hauteur": 212,
+ "largeur": 638,
+ "hauteur": 638,
+ "colonnes": 12,
  "fps": 12,
  "appui": [
-  106,
-  195
+  319,
+  586
  ],
  "boucle": true,
  "echelle_jeu": 0.5,
- "taille": 112
+ "taille": 336
 }

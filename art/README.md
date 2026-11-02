@@ -28,3 +28,8 @@ objets restent ceux des salles grises. **F2** bascule entre la DA et le gris.
 `encre` (contours et hachures), `ombre` (cœur des blocs, teinté, jamais noir), `lumiere` (liserés,
 halos des brasiers), `brume` + `voile` (brume entre le fond et les blocs ; plus le voile est fort,
 plus le fond recule). Le vert-bleu reste réservé aux esprits.
+
+## Netteté (2026-11-02)
+
+- Les planches de Wendel sont en haute définition (personnage de 336 px dans la planche, couleurs complètes) : le jeu les réduit à 62 px à l'échelle 1, et elles restent nettes en 1440p et en 4K. Les planches passent à la ligne au-delà de 8192 px (« colonnes » dans le .json).
+- Tout l'art est importé avec mipmaps (`mipmaps/generate=true` dans les .import) et affiché en filtrage linéaire avec mipmaps : une image réduite à l'écran ne crénèle pas. Pour une nouvelle image, cocher « Mipmaps > Generate » à l'import (ou copier un .import existant).
