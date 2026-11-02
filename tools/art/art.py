@@ -341,6 +341,28 @@ def _fill_masked(arr, mask, iters=300):
     return out
 
 
+def match_colors(im, refs):
+    """Recale les couleurs d'une pose sur d'autres (histogrammes en Lab, personnage seulement) :
+    une image MJ partie dans une autre teinte rejoint la palette des autres."""
+    from skimage import color, exposure
+    rgba = np.asarray(im).astype(np.float32) / 255.0
+    fg = rgba[..., 3] > 0.5
+    lab = color.rgb2lab(rgba[..., :3])
+    ref_px = []
+    for r in refs:
+        rr = np.asarray(r.convert("RGBA")).astype(np.float32) / 255.0
+        ref_px.append(color.rgb2lab(rr[..., :3])[rr[..., 3] > 0.5])
+    ref_px = np.concatenate(ref_px)
+    src = lab[fg]
+    out = np.empty_like(src)
+    for c in range(3):
+        out[:, c] = exposure.match_histograms(src[:, c], ref_px[:, c])
+    lab[fg] = out
+    rgb = np.clip(color.lab2rgb(lab), 0, 1)
+    res = np.dstack([rgb, rgba[..., 3:]]) * 255.0
+    return Image.fromarray(res.astype(np.uint8), "RGBA")
+
+
 def cmd_poses(a):
     """Poses clés d'une attaque (images fixes Midjourney) -> planche alignée + main et angle de l'arme.
     Le bâton (ou l'arme) dessiné par MJ est effacé : le jeu pose l'arme en couche à part."""
@@ -376,6 +398,9 @@ def cmd_poses(a):
         al = arr[..., 3]
         al[mask] = np.where(al[mask] > 160, 255, 0)
         im = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
+        if ps.get("teinte_ref"):
+            im = match_colors(im, [Image.open(os.path.join(a.cache, os.path.splitext(r)[0] + "-detoure.png"))
+                                   for r in ps["teinte_ref"]])
         k = s_ref * spec["tete_ref"] / ps["tete"]
         im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
         ox = foot[0] - ps["appui"][0] * k
