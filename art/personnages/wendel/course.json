@@ -1,0 +1,14 @@
+{
+ "images": 12,
+ "largeur": 638,
+ "hauteur": 638,
+ "colonnes": 12,
+ "fps": 12,
+ "appui": [
+  319,
+  586
+ ],
+ "boucle": true,
+ "echelle_jeu": 0.5,
+ "taille": 336
+}

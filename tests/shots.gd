@@ -27,6 +27,10 @@ func _ready() -> void:
 				game._load_room(id, Vector2((i * 40 + 20) * 32, (j * 22 + 11) * 32))
 				game.player.velocity = Vector2.ZERO
 				await get_tree().create_timer(0.15).timeout
+				# ECHELLE=1 : avec le calque de contrôle d'échelle (F3).
+				if OS.get_environment("ECHELLE") == "1" and get_tree().get_nodes_in_group("echelle_debug").is_empty():
+					Art._toggle_echelle()
+					await get_tree().process_frame
 				get_viewport().get_texture().get_image().save_png(out + "/%02d_%s_%d_%d.png" % [n, id, i, j])
 				n += 1
 	World.wait_until(true)

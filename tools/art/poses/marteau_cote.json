@@ -1,0 +1,132 @@
+{
+ "note": "Coup de côté du Marteau en poses clés (images Midjourney K1-K4). Coordonnées en pixels de l'image source 1024². baton : traits [x0,y0,x1,y1,épaisseur] effacés (le bâton ou le marteau de MJ) ; boites : rectangles effacés. tete : hauteur de la tête (haut des cheveux au menton), pour mettre les poses à la même échelle. appui : point sous les hanches, au sol. main : où se pose la poignée de l'arme ; angle : direction du manche vers la tête de l'arme, en degrés (0 = vers l'avant, positif = vers le bas). L'angle est celui de l'arme du jeu, pas forcément celui du bâton de MJ (à l'armé, la tête du marteau part derrière). teinte_ref : poses dont on reprend les couleurs (pour une image MJ partie dans une autre teinte).",
+ "taille_ref": 117,
+ "tete_ref": 125,
+ "hauteur_ref": 955,
+ "poses": {
+  "garde": {
+   "src": "K1.png",
+   "tete": 125,
+   "appui": [
+    430,
+    990
+   ],
+   "main": [
+    455,
+    550
+   ],
+   "angle": 8,
+   "baton": [
+    [
+     100,
+     522,
+     600,
+     562,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     578,
+     512,
+     690,
+     645
+    ]
+   ]
+  },
+  "arme": {
+   "src": "K2.png",
+   "tete": 165,
+   "appui": [
+    560,
+    990
+   ],
+   "main": [
+    460,
+    140
+   ],
+   "angle": -160,
+   "baton": [
+    [
+     160,
+     210,
+     850,
+     52,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     775,
+     30,
+     855,
+     90
+    ]
+   ],
+   "teinte_ref": [
+    "K1.png",
+    "K3.png"
+   ]
+  },
+  "impact": {
+   "src": "K3.png",
+   "tete": 130,
+   "appui": [
+    480,
+    905
+   ],
+   "main": [
+    790,
+    370
+   ],
+   "angle": 5,
+   "baton": [
+    [
+     132,
+     264,
+     388,
+     302,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     800,
+     345,
+     955,
+     420
+    ]
+   ]
+  },
+  "suite": {
+   "src": "K4.png",
+   "tete": 160,
+   "appui": [
+    470,
+    892
+   ],
+   "main": [
+    850,
+    330
+   ],
+   "angle": 30,
+   "baton": [
+    [
+     40,
+     540,
+     412,
+     452,
+     40
+    ],
+    [
+     848,
+     334,
+     1000,
+     302,
+     40
+    ]
+   ],
+   "boites": []
+  }
+ }
+}

@@ -23,6 +23,8 @@ var room: Room
 var player: Player
 var fx: Fx
 var camera: Camera2D
+const CAM_ZOOM := 1.35   # ~30 × 17 cases visibles ; Wendel ≈ 12 % de la hauteur d'écran
+var _cam_lead := Vector2(70.0, -30.0)
 var hud: Hud
 var tint: CanvasModulate
 var water_rects: Array[Rect2] = []
@@ -72,7 +74,7 @@ func _ready() -> void:
 	stage.add_child(fx)
 
 	camera = Camera2D.new()
-	camera.zoom = Vector2(1.15, 1.15)
+	camera.zoom = Vector2(CAM_ZOOM, CAM_ZOOM)
 	camera.position_smoothing_enabled = true
 	camera.position_smoothing_speed = 7.0
 	stage.add_child(camera)
@@ -157,6 +159,7 @@ func _load_room(room_id: String, pos: Vector2) -> void:
 		pos = room.start_pos
 	player.position = pos
 	player.reset_safe_pos()
+	_cam_lead = Vector2(player.facing * 70.0, -30.0)
 	_update_camera()
 	camera.reset_smoothing()
 	_door_cd = 0.4
@@ -187,6 +190,7 @@ func _go_through(digit: String) -> void:
 		vel.y = minf(vel.y, -900.0)   # on remonte par un trou dans le sol
 	player.velocity = vel
 	player.reset_safe_pos()
+	_cam_lead = Vector2(player.facing * 70.0, -30.0)
 	_update_camera()
 	camera.reset_smoothing()
 	await _fade_in()
@@ -471,8 +475,16 @@ func _spawn_spirit() -> void:
 
 
 func _update_camera() -> void:
-	if is_instance_valid(player):
-		camera.position = player.position + Vector2(player.facing * 60.0, -40.0)
+	if not is_instance_valid(player):
+		return
+	# Caméra proche à la Silksong : avance dans le sens de la marche (glissée, pas d'à-coup au demi-tour),
+	# et regarde vers le bas pendant une chute longue.
+	var dt := get_process_delta_time()
+	var want_x := player.facing * 70.0 + clampf(player.velocity.x * 0.12, -40.0, 40.0)
+	_cam_lead.x = move_toward(_cam_lead.x, want_x, 260.0 * dt)
+	var want_y := -30.0 + (clampf((player.velocity.y - 300.0) * 0.25, 0.0, 120.0) if not player.is_on_floor() else 0.0)
+	_cam_lead.y = move_toward(_cam_lead.y, want_y, 220.0 * dt)
+	camera.position = player.position + _cam_lead
 
 
 func _confirm_pressed() -> bool:
