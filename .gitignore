@@ -1,3 +1,6 @@
 .godot/
 *.import
 export/
+
+# Réglages d'import de la vraie DA (mipmaps) : partagés, pour que l'art soit net partout.
+!art/**/*.import

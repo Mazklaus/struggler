@@ -17,13 +17,21 @@ func _ready() -> void:
 	Engine.time_scale = 0.05
 	var p: Player = game.player
 	p.facing = 1
-	p._start_attack(0, false)
-	var t0 := p._state_time
-	var n := 0
-	for at in [0.03, 0.08, 0.11, 0.15, 0.2, 0.3, 0.38]:
-		while p._state_time < at and p.state == Player.S.ATTACK:
-			await get_tree().process_frame
-		get_viewport().get_texture().get_image().save_png(out + "/attaque_%d.png" % n)
-		n += 1
+	# Coup de côté, vers le haut, puis vers le bas en l'air (dir 0, 1, 2).
+	for dir in [0, 1, 2]:
+		Engine.time_scale = 1.0
+		if dir == 2:
+			p.velocity = Vector2(0, -700)
+			await get_tree().create_timer(0.12).timeout
+		Engine.time_scale = 0.05
+		p._start_attack(dir, false)
+		var n := 0
+		for at in [0.03, 0.08, 0.11, 0.15, 0.2, 0.3, 0.38]:
+			while p._state_time < at and p.state == Player.S.ATTACK:
+				await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png(out + "/attaque_%d_%d.png" % [dir, n])
+			n += 1
+		Engine.time_scale = 1.0
+		await get_tree().create_timer(0.6).timeout
 	Engine.time_scale = 1.0
 	get_tree().quit()

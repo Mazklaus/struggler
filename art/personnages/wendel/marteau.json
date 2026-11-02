@@ -1,8 +1,8 @@
 {
- "images": 4,
+ "images": 8,
  "largeur": 638,
  "hauteur": 638,
- "colonnes": 4,
+ "colonnes": 8,
  "appui": [
   319,
   586
@@ -13,7 +13,11 @@
   "garde",
   "arme",
   "impact",
-  "suite"
+  "suite",
+  "haut_arme",
+  "haut_impact",
+  "bas_arme",
+  "bas_impact"
  ],
  "mains": [
   [
@@ -31,12 +35,32 @@
   [
    428.1,
    424.6
+  ],
+  [
+   361.4,
+   510.0
+  ],
+  [
+   386.8,
+   264.4
+  ],
+  [
+   391.2,
+   336.6
+  ],
+  [
+   374.8,
+   538.4
   ]
  ],
  "angles": [
   8,
   -160,
   5,
-  30
+  30,
+  160,
+  -70,
+  -110,
+  70
  ]
 }

@@ -39,7 +39,7 @@ func setup(p: Player) -> void:
 		var m: Dictionary = JSON.parse_string(f.get_as_text())
 		m["tex"] = load(DIR + a + ".png")
 		anims[a] = m
-	for a in ["marteau_cote"]:
+	for a in ["marteau"]:
 		var f := FileAccess.open(DIR + a + ".json", FileAccess.READ)
 		if f:
 			var m: Dictionary = JSON.parse_string(f.get_as_text())
@@ -96,7 +96,7 @@ func _process(delta: float) -> void:
 ## Pendant une frappe du Marteau : la pose selon la phase du coup (armé, impact, suite, garde),
 ## l'arme dans la main et la traînée. Renvoie false hors attaque.
 func _attack_pose() -> bool:
-	var m: Dictionary = poses.get("marteau_cote", {})
+	var m: Dictionary = poses.get("marteau", {})
 	if m.is_empty() or player.state != Player.S.ATTACK or player.weapon != Player.W.MARTEAU or player._atk.is_empty():
 		if _pose >= 0:
 			_pose = -1
@@ -107,13 +107,18 @@ func _attack_pose() -> bool:
 	var a: Dictionary = player._atk
 	var t: float = player._state_time
 	var names: Array = m.poses
-	var nom := "garde"
+	# Poses du coup selon sa direction : côté (et lourd, pour l'instant), haut, bas en l'air.
+	var dir: int = a.get("dir", 0)
+	var pre := "haut_" if dir == 1 else ("bas_" if dir == 2 else "")
+	if pre != "" and names.find(pre + "arme") < 0:
+		pre = ""
+	var nom := "garde" if pre != "bas_" else pre + "impact"
 	if t < a.windup:
-		nom = "arme"
+		nom = pre + "arme"
 	elif t < a.windup + a.active:
-		nom = "impact"
+		nom = pre + "impact"
 	elif t < a.windup + a.active + a.recovery * 0.55:
-		nom = "suite"
+		nom = "suite" if pre == "" else pre + "impact"
 	var i := names.find(nom)
 	if _pose == -1:
 		current = ""
@@ -134,7 +139,7 @@ func _attack_pose() -> bool:
 	if t >= a.windup and not _trainee.active:
 		var tete := func(j: int) -> Vector2:
 			return Vector2(m.mains[j][0], m.mains[j][1]) + Vector2.from_angle(deg_to_rad(float(m.angles[j]))) * ARME_LONGUEUR_M * px_m * 0.92
-		_trainee.start(tete.call(names.find("arme")), tete.call(names.find("impact")), a.get("blanc", false), float(m.taille) / 112.0)
+		_trainee.start(tete.call(names.find(pre + "arme")), tete.call(names.find(pre + "impact")), a.get("blanc", false), float(m.taille) / 112.0)
 	return true
 
 
@@ -171,7 +176,12 @@ class Trainee extends Node2D:
 
 	func _draw() -> void:
 		var f := clampf(_t / DUREE, 0.0, 1.0)
-		var ctrl := (_a + _b) * 0.5 + Vector2(10, -70) * _u
+		# Arc bombé vers l'avant ou vers le haut, quel que soit le sens du coup.
+		var d := _b - _a
+		var perp := Vector2(-d.y, d.x).normalized()
+		if perp.y > 0.0 and absf(perp.x) < 0.7 or perp.x < -0.7:
+			perp = -perp
+		var ctrl := (_a + _b) * 0.5 + perp * d.length() * 0.45
 		var n := 14
 		var pts_out := PackedVector2Array()
 		var pts_in := PackedVector2Array()

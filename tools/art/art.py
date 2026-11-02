@@ -391,7 +391,13 @@ def cmd_poses(a):
         if os.path.exists(cache):
             im = Image.open(cache).convert("RGBA")
         else:
-            im = key_ai(Image.open(os.path.join(base, ps["src"])).convert("RGB"))
+            full = Image.open(os.path.join(base, ps["src"])).convert("RGB")
+            if ps.get("recadrage"):
+                x0, y0, x1, y1 = ps["recadrage"]
+                im = Image.new("RGBA", full.size)
+                im.alpha_composite(key_ai(full.crop((x0, y0, x1, y1))), (x0, y0))
+            else:
+                im = key_ai(full)
             os.makedirs(a.cache, exist_ok=True)
             im.save(cache)
             if a.une_seule:

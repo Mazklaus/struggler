@@ -1,0 +1,272 @@
+{
+ "note": "Coup de côté du Marteau en poses clés (images Midjourney K1-K4). Coordonnées en pixels de l'image source 1024². baton : traits [x0,y0,x1,y1,épaisseur] effacés (le bâton ou le marteau de MJ) ; boites : rectangles effacés. tete : hauteur de la tête (haut des cheveux au menton), pour mettre les poses à la même échelle. appui : point sous les hanches, au sol. main : où se pose la poignée de l'arme ; angle : direction du manche vers la tête de l'arme, en degrés (0 = vers l'avant, positif = vers le bas). L'angle est celui de l'arme du jeu, pas forcément celui du bâton de MJ (à l'armé, la tête du marteau part derrière). teinte_ref : poses dont on reprend les couleurs (pour une image MJ partie dans une autre teinte). recadrage : [x0,y0,x1,y1] de l'image à garder avant détourage (cadre parasite). Poses par coup : garde/arme/impact/suite (côté), haut_*, bas_* (en l'air).",
+ "taille_ref": 117,
+ "tete_ref": 125,
+ "hauteur_ref": 955,
+ "poses": {
+  "garde": {
+   "src": "K1.png",
+   "tete": 125,
+   "appui": [
+    430,
+    990
+   ],
+   "main": [
+    455,
+    550
+   ],
+   "angle": 8,
+   "baton": [
+    [
+     100,
+     522,
+     600,
+     562,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     578,
+     512,
+     690,
+     645
+    ]
+   ]
+  },
+  "arme": {
+   "src": "K2.png",
+   "tete": 165,
+   "appui": [
+    560,
+    990
+   ],
+   "main": [
+    460,
+    140
+   ],
+   "angle": -160,
+   "baton": [
+    [
+     160,
+     210,
+     850,
+     52,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     775,
+     30,
+     855,
+     90
+    ]
+   ],
+   "teinte_ref": [
+    "K1.png",
+    "K3.png"
+   ]
+  },
+  "impact": {
+   "src": "K3.png",
+   "tete": 130,
+   "appui": [
+    480,
+    905
+   ],
+   "main": [
+    790,
+    370
+   ],
+   "angle": 5,
+   "baton": [
+    [
+     132,
+     264,
+     388,
+     302,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     800,
+     345,
+     955,
+     420
+    ]
+   ]
+  },
+  "suite": {
+   "src": "K4.png",
+   "tete": 160,
+   "appui": [
+    470,
+    892
+   ],
+   "main": [
+    850,
+    330
+   ],
+   "angle": 30,
+   "baton": [
+    [
+     40,
+     540,
+     412,
+     452,
+     40
+    ],
+    [
+     848,
+     334,
+     1000,
+     302,
+     40
+    ]
+   ],
+   "boites": []
+  },
+  "haut_arme": {
+   "src": "K5.png",
+   "tete": 130,
+   "appui": [
+    470,
+    960
+   ],
+   "main": [
+    590,
+    745
+   ],
+   "angle": 160,
+   "baton": [
+    [
+     70,
+     662,
+     940,
+     795,
+     40
+    ]
+   ],
+   "boites": []
+  },
+  "haut_impact": {
+   "src": "K6.png",
+   "tete": 105,
+   "appui": [
+    360,
+    970
+   ],
+   "main": [
+    515,
+    235
+   ],
+   "angle": -70,
+   "baton": [
+    [
+     540,
+     215,
+     690,
+     0,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     555,
+     0,
+     815,
+     305
+    ]
+   ]
+  },
+  "bas_arme": {
+   "src": "K7.png",
+   "tete": 140,
+   "appui": [
+    480,
+    960
+   ],
+   "main": [
+    700,
+    200
+   ],
+   "angle": -110,
+   "baton": [
+    [
+     0,
+     0,
+     385,
+     70,
+     40
+    ],
+    [
+     452,
+     106,
+     665,
+     190,
+     40
+    ],
+    [
+     735,
+     216,
+     935,
+     298,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     150,
+     0,
+     330,
+     50
+    ]
+   ]
+  },
+  "bas_impact": {
+   "src": "K8.png",
+   "tete": 140,
+   "appui": [
+    470,
+    790
+   ],
+   "main": [
+    640,
+    645
+   ],
+   "angle": 70,
+   "recadrage": [
+    152,
+    50,
+    873,
+    976
+   ],
+   "baton": [
+    [
+     222,
+     108,
+     372,
+     302,
+     40
+    ],
+    [
+     668,
+     690,
+     850,
+     880,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     712,
+     745,
+     852,
+     888
+    ]
+   ]
+  }
+ }
+}
