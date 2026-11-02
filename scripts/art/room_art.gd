@@ -11,11 +11,9 @@ const MAT_INDEX := {"roche": 0, "bois": 1, "maconnerie": 2, "chair": 3, "eboulis
 var room: Room
 var conf := {}
 var dir := ""
-var _bg: Sprite2D
-var _mods: Node2D            # fond en modules répétés (voir _build_modules)
-var _mod_len := 0.0
 var _blocks: ColorRect
-var _haze: ColorRect
+var amb_map := PackedStringArray()   # ambiance de chaque case (ligne par ligne), voir ambiance_map
+var _amb_w := 0
 var _maps_task := -1
 var _maps: Array = []
 var _on := true
@@ -30,26 +28,10 @@ func setup(r: Room, zone_dir: String, zone: Dictionary, salle: Dictionary) -> vo
 	name = "RoomArt"
 	z_index = -10
 	z_as_relative = false
-	var pal: Dictionary = salle.get("palette", {})
-
-	if salle.has("fond"):
-		_bg = Sprite2D.new()
-		_bg.texture = load(dir + salle.fond)
-		_bg.centered = false
-		_bg.region_enabled = true
-		_bg.z_index = -30
-		add_child(_bg)
-
-	if salle.has("fond_modules"):
-		_build_modules(salle.fond_modules)
-
-	_haze = ColorRect.new()
-	_haze.size = room.size
-	_haze.color = Color(pal.get("brume", "000000"))
-	_haze.color.a = salle.get("voile", 0.3)
-	_haze.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_haze.z_index = -20
-	add_child(_haze)
+	var ambs: Dictionary = zone.get("ambiances", {})
+	var main: Dictionary = ambs.get(salle.get("ambiance", ""), salle)
+	var pal: Dictionary = salle.get("palette", main.get("palette", {}))
+	_build_fonds(zone, salle, main)
 
 	_blocks = ColorRect.new()
 	_blocks.size = room.size
@@ -142,61 +124,6 @@ func apply(on: bool) -> void:
 	deco.queue_redraw()
 
 
-## Fond fait de modules : un morceau de décor à la bonne échelle, qui se raccorde à lui-même
-## dans l'axe de la salle (vertical pour un puits, horizontal pour une galerie). Plusieurs variantes
-## se succèdent dans un ordre fixe mais sans motif visible ; « haut » et « bas » (ou « debut » et
-## « fin ») ferment la pile. La taille d'un module est fixée en pixels du monde : c'est elle qui
-## règle l'échelle du fond par rapport à Wendel, quelle que soit la taille de la salle.
-func _build_modules(m: Dictionary) -> void:
-	_mods = Node2D.new()
-	_mods.z_index = -30
-	add_child(_mods)
-	var vertical: bool = m.get("axe", "vertical") == "vertical"
-	var base: Array = m.get("base", [])
-	if base.is_empty():
-		return
-	var texs: Array[Texture2D] = []
-	for b in base:
-		texs.append(load(dir + b))
-	var cross: float = m.get("largeur", 1280.0)        # largeur couverte (hauteur si horizontal)
-	var side: float = m.get("taille", cross)            # taille d'un module en travers
-	var f: float = conf.get("parallaxe", 0.15)
-	var length := (room.size.y if vertical else room.size.x) * f + (720.0 if vertical else 1280.0) * 1.5
-	# Entre deux modules voisins, le suivant chevauche le précédent et s'y fond (dans les deux sens).
-	var fondu: float = m.get("fondu", 0.15) if texs.size() > 1 else 0.0
-	var shader: Shader = load("res://art/shaders/fondu_module.gdshader")
-	# Grille de colonnes : chaque colonne déroule les variantes dans un ordre décalé et commence
-	# plus ou moins haut, pour que la même image ne se retrouve pas côte à côte.
-	var cols := int(ceil(cross / (side * (1.0 - fondu)))) if m.has("taille") else 1
-	for c in cols:
-		var pos := -side * 2.0 * fmod(c * 0.37, 1.0) if c > 0 else 0.0
-		var i := c * 2 + 1 if c > 0 else 0
-		var first_row := true
-		while pos < length:
-			var t: Texture2D = texs[(i * 7 + (i / texs.size()) * 3) % texs.size()]
-			i += 1
-			var sp := Sprite2D.new()
-			sp.texture = t
-			sp.centered = false
-			var k := side / (t.get_width() if vertical else t.get_height())
-			sp.scale = Vector2(k, k)
-			var step := t.get_height() * k if vertical else t.get_width() * k
-			var cross_pos := c * side * (1.0 - fondu)
-			if not first_row:
-				pos -= step * fondu
-			var mat := ShaderMaterial.new()
-			mat.shader = shader
-			mat.set_shader_parameter("fondu", 0.0 if first_row else fondu * 1.0)
-			mat.set_shader_parameter("fondu_x", 0.0 if c == 0 else fondu)
-			mat.set_shader_parameter("vertical", vertical)
-			sp.material = mat
-			sp.position = Vector2(cross_pos, pos) if vertical else Vector2(pos, cross_pos)
-			_mods.add_child(sp)
-			pos += step
-			first_row = false
-		_mod_len = maxf(_mod_len, pos)
-
-
 func _process(_delta: float) -> void:
 	if _maps_task >= 0 and WorkerThreadPool.is_task_completed(_maps_task):
 		WorkerThreadPool.wait_for_task_completion(_maps_task)
@@ -206,46 +133,107 @@ func _process(_delta: float) -> void:
 		m.set_shader_parameter("mat_tex", ImageTexture.create_from_image(_maps[1]))
 		_blocks.visible = true
 		apply(_on)
-	if not visible or (_bg == null and _mods == null):
+	if visible and _blocks.material:
+		(_blocks.material as ShaderMaterial).set_shader_parameter("night", World.night_amount())
+
+
+## Les fonds de la salle, un par ambiance. Une salle sans « regles » ni « zones » n'a qu'une
+## ambiance. Sinon chaque case vide reçoit la sienne (voir ambiance_map), et chaque fond n'est
+## visible que sur ses cases, avec un fondu de quelques cases aux frontières.
+func _build_fonds(zone: Dictionary, salle: Dictionary, main: Dictionary) -> void:
+	var ambs: Dictionary = zone.get("ambiances", {})
+	if not salle.has("regles") and not salle.has("zones"):
+		_add_fond(main, null)
 		return
-	var cam := get_viewport().get_camera_2d()
-	if cam == null:
-		return
-	var view := get_viewport_rect().size / cam.zoom
-	var tl := cam.get_screen_center_position() - view * 0.5
-	var f: float = conf.get("parallaxe", 0.15)
-	# Le fond couvre la vue et défile au moins d'une fraction f du déplacement de la caméra.
-	# S'il est plus grand que nécessaire (image verticale dans une salle étroite), il défile
-	# juste assez pour qu'on en voie le haut en haut de la salle et le bas en bas.
-	var travel := (room.size - view).max(Vector2.ZERO)
-	if _mods:
-		# Les modules défilent à la fraction f de la caméra ; centrés dans l'autre axe.
-		var fm: float = conf.get("parallaxe", 0.15)
-		var vertical: bool = conf.fond_modules.get("axe", "vertical") == "vertical"
-		var cross: float = conf.fond_modules.get("largeur", 1280.0)
-		var c := cam.get_screen_center_position()
-		if vertical:
-			_mods.position = Vector2(c.x - cross * 0.5, tl.y * (1.0 - fm))
-		else:
-			_mods.position = Vector2(tl.x * (1.0 - fm), c.y - cross * 0.5)
-		_mods.modulate = Color(1, 1, 1).lerp(Color(0.55, 0.6, 0.8), World.night_amount())
-	if _bg == null:
-		if _blocks.material:
-			(_blocks.material as ShaderMaterial).set_shader_parameter("night", World.night_amount())
-		return
-	var need := view + travel * f
-	var tex := _bg.texture.get_size()
-	var k := maxf(need.y / tex.y, need.x / tex.x)
-	var shown := tex * k
-	var fx := clampf((shown.x - view.x) / travel.x, 0.0, 1.0) if travel.x > 0.0 else 0.0
-	var fy := clampf((shown.y - view.y) / travel.y, 0.0, 1.0) if travel.y > 0.0 else 0.0
-	_bg.scale = Vector2(k, k)
-	_bg.region_rect = Rect2(Vector2.ZERO, tex)
-	_bg.position = tl - Vector2(tl.x * fx, tl.y * fy)
-	var night := World.night_amount()
-	_bg.modulate = Color(1, 1, 1).lerp(Color(0.55, 0.6, 0.8), night)
-	if _blocks.material:
-		(_blocks.material as ShaderMaterial).set_shader_parameter("night", night)
+	ambiance_map(salle, salle.get("ambiance", ""))
+	var used := {}
+	for a in amb_map:
+		used[a] = true
+	for a in used:
+		if not ambs.has(a):
+			push_warning("ambiance inconnue : %s (salle %s)" % [a, room.id])
+			continue
+		_add_fond(ambs[a], _mask_for(a, int(salle.get("fondu_cases", 3))))
+
+
+func _add_fond(amb: Dictionary, mask: Texture2D) -> void:
+	var fc := FondCalque.new()
+	add_child(fc)
+	fc.setup(room, dir, amb, mask)
+
+
+## Ambiance de chaque case, d'après la forme de la salle : une case regarde ce qu'elle a
+## au-dessus d'elle. Rien (hors bordure du haut) : « ciel ». Sinon la lettre du premier bloc
+## rencontré (« t » terril, « b » ou « - » boisage, « M » maçonnerie…) ou « * » pour tout bloc.
+## Les « zones » (rectangles en cases, de [x, y] à [x, y] exclus) passent par-dessus.
+func ambiance_map(salle: Dictionary, defaut: String) -> PackedStringArray:
+	var rows: Array = Rooms.DATA[room.id].rows
+	var w: int = rows[0].length()
+	var h: int = rows.size()
+	_amb_w = w
+	var regles: Dictionary = salle.get("regles", {})
+	# Bordure du haut : les premières lignes presque pleines (le plafond de la salle).
+	var top := 0
+	while top < h and float((rows[top] as String).count(" ")) < w * 0.1 and top < 3:
+		top += 1
+	amb_map.resize(w * h)
+	for x in w:
+		var cover := ""
+		for y in h:
+			var ch: String = (rows[y] as String)[x]
+			var solid := ch in "#XwbMota-"   # blocs et bois (voir la légende de rooms.gd)
+			if y >= top and solid:
+				cover = ch
+			var a := defaut
+			if not regles.is_empty():
+				if cover == "":
+					a = regles.get("ciel", defaut)
+				else:
+					a = regles.get(cover, regles.get("*", defaut))
+			amb_map[y * w + x] = a
+	for z in salle.get("zones", []):
+		for y in range(int(z.de[1]), int(z.a[1])):
+			for x in range(int(z.de[0]), int(z.a[0])):
+				if x >= 0 and x < w and y >= 0 and y < h:
+					amb_map[y * w + x] = z.ambiance
+	return amb_map
+
+
+func ambiance_at(cell: Vector2i) -> String:
+	if _amb_w == 0:
+		return ""
+	return amb_map[cell.y * _amb_w + cell.x]
+
+
+## Masque d'une ambiance : une case par pixel, adouci sur « fondu » cases (flou en boîte).
+func _mask_for(a: String, fondu: int) -> Texture2D:
+	var w := _amb_w
+	var h := amb_map.size() / w
+	var v := PackedFloat32Array()
+	v.resize(w * h)
+	for i in v.size():
+		v[i] = 1.0 if amb_map[i] == a else 0.0
+	var r := maxi(fondu / 2, 0)
+	for pass_ in 2:
+		var o := PackedFloat32Array()
+		o.resize(w * h)
+		for y in h:
+			for x in w:
+				var s := 0.0
+				var n := 0
+				for d in range(-r, r + 1):
+					var xx := x + d if pass_ == 0 else x
+					var yy := y if pass_ == 0 else y + d
+					if xx >= 0 and xx < w and yy >= 0 and yy < h:
+						s += v[yy * w + xx]
+						n += 1
+				o[y * w + x] = s / float(n)
+		v = o
+	var img := Image.create(w, h, false, Image.FORMAT_L8)
+	for y in h:
+		for x in w:
+			img.set_pixel(x, y, Color(v[y * w + x], 0, 0))
+	return ImageTexture.create_from_image(img)
 
 
 ## Deux cartes de la salle à 8 px la case : distance de chaque case pleine à l'air le plus proche

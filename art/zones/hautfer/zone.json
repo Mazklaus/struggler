@@ -1,6 +1,6 @@
 {
 	"zone": "hautfer",
-	"note": "Salles de Hautfer passées en vraie DA. Une salle absente ici reste en gris. « voile » : opacité de la brume entre le fond et les blocs (plus fort = fond plus lointain). « decors » : objets posés, x en tuiles (centre), y en tuiles (ligne du sol sous l'objet), échelle 0.5 pour l'art au double, « devant » pour passer devant Wendel. « lumiere » : halo chaud autour de l'objet ; « miroir » : retourné.",
+	"note": "Salles de Hautfer passées en vraie DA. Une salle absente ici reste en gris. « ambiances » : catalogue des fonds de la zone (fond ou fond_modules, parallaxe, voile = opacité de la brume, palette). Une salle prend une « ambiance » par défaut ; avec « regles », chaque case prend l'ambiance de ce qu'elle a au-dessus d'elle (« ciel » si rien, sinon la lettre du bloc : t éboulis, b bois, M maçonnerie…, « * » pour les autres) ; « zones » force une ambiance sur un rectangle de cases [de, a[. « decors » : objets posés, x en tuiles (centre), y en tuiles (ligne du sol sous l'objet), « hauteur » en mètres (1 case = 1 m), « devant » pour passer devant Wendel. « lumiere » : halo chaud autour de l'objet ; « miroir » : retourné.",
 	"matieres": {
 		"roche": "matieres/roche.png",
 		"bois": "matieres/bois.png",
@@ -9,17 +9,109 @@
 		"eboulis": "matieres/eboulis.png",
 		"fer": "matieres/fer.png"
 	},
-	"salles": {
-		"h21_carreau": {
+	"ambiances": {
+		"carreau_ciel": {
 			"fond": "fonds/carreau.jpg",
 			"parallaxe": 0.18,
+			"voile": 0.25,
+			"palette": {
+				"encre": "1d1420",
+				"ombre": "3a2a44",
+				"lumiere": "f2a866",
+				"brume": "8a5560"
+			}
+		},
+		"galerie": {
+			"fond_modules": {
+				"axe": "vertical",
+				"largeur": 1600,
+				"taille": 420,
+				"base": [
+					"modules/puits_paroi_a.jpg",
+					"modules/puits_paroi_b.jpg",
+					"modules/puits_paroi_c.jpg"
+				]
+			},
+			"parallaxe": 0.3,
+			"voile": 0.45,
+			"palette": {
+				"encre": "1d1420",
+				"ombre": "2e2430",
+				"lumiere": "f0a060",
+				"brume": "3a2a30"
+			}
+		},
+		"tunnel": {
+			"fond_modules": {
+				"axe": "vertical",
+				"largeur": 1600,
+				"taille": 420,
+				"base": [
+					"modules/puits_paroi_a.jpg",
+					"modules/puits_paroi_b.jpg",
+					"modules/puits_paroi_c.jpg"
+				]
+			},
+			"parallaxe": 0.3,
+			"voile": 0.6,
+			"palette": {
+				"encre": "1d1420",
+				"ombre": "2a2030",
+				"lumiere": "e09050",
+				"brume": "2a1c24"
+			}
+		},
+		"abri": {
+			"fond_modules": {
+				"axe": "vertical",
+				"largeur": 1600,
+				"taille": 420,
+				"base": [
+					"modules/puits_paroi_a.jpg",
+					"modules/puits_paroi_b.jpg",
+					"modules/puits_paroi_c.jpg"
+				]
+			},
+			"parallaxe": 0.3,
+			"voile": 0.35,
+			"palette": {
+				"encre": "1d1420",
+				"ombre": "3a2a44",
+				"lumiere": "f2a866",
+				"brume": "6a4048"
+			}
+		},
+		"grand_puits": {
+			"fond_modules": {
+				"axe": "vertical",
+				"largeur": 1400,
+				"taille": 420,
+				"base": [
+					"modules/puits_paroi_a.jpg",
+					"modules/puits_paroi_b.jpg",
+					"modules/puits_paroi_c.jpg",
+					"modules/puits_chair_a.jpg",
+					"modules/puits_chair_b.jpg"
+				]
+			},
+			"parallaxe": 0.3,
+			"voile": 0.4,
+			"palette": {
+				"encre": "0c171c",
+				"ombre": "2a2a3c",
+				"lumiere": "f0a85c",
+				"brume": "2a2030"
+			}
+		}
+	},
+	"salles": {
+		"h21_carreau": {
 			"palette": {
 				"encre": "1d1420",
 				"ombre": "3a2a44",
 				"lumiere": "f2a866",
 				"brume": "8a5560"
 			},
-			"voile": 0.25,
 			"decors": [
 				{
 					"image": "decors/wagonnet.png",
@@ -40,17 +132,35 @@
 					"hauteur": 1.1,
 					"lumiere": true
 				}
+			],
+			"ambiance": "carreau_ciel",
+			"regles": {
+				"ciel": "carreau_ciel",
+				"t": "tunnel",
+				"M": "galerie",
+				"*": "abri"
+			},
+			"zones": [
+				{
+					"de": [
+						0,
+						0
+					],
+					"a": [
+						14,
+						22
+					],
+					"ambiance": "galerie"
+				}
 			]
 		},
 		"h23_grand_puits": {
-			"parallaxe": 0.3,
 			"palette": {
 				"encre": "0c171c",
 				"ombre": "2a2a3c",
 				"lumiere": "f0a85c",
 				"brume": "2a2030"
 			},
-			"voile": 0.4,
 			"decors": [
 				{
 					"image": "decors/lanterne.png",
@@ -81,17 +191,7 @@
 					"hauteur": 2.4
 				}
 			],
-			"fond_modules": {
-				"axe": "vertical",
-				"largeur": 1400,
-				"taille": 420,
-				"base": [
-					"modules/puits_paroi_a.jpg",
-					"modules/puits_paroi_b.jpg",
-					"modules/puits_paroi_c.jpg",
-					"modules/puits_chair_a.jpg", "modules/puits_chair_b.jpg"
-				]
-			}
+			"ambiance": "grand_puits"
 		}
 	}
 }
