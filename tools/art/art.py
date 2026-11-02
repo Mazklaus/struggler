@@ -320,6 +320,85 @@ def trim_loop_idx(frames, pmin=5, pmax=24):
     return list(range(best_s, best_s + best_p))
 
 
+# --- Poses clés (attaques) -----------------------------------------------------
+
+def _fill_masked(arr, mask, iters=300):
+    """Remplit les pixels masqués par diffusion depuis leurs voisins (couleur et alpha)."""
+    out = arr.astype(np.float32).copy()
+    known = ~mask
+    out[mask] = 0.0
+    for _ in range(iters):
+        acc = np.zeros_like(out)
+        cnt = np.zeros(mask.shape, np.float32)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            sh = np.roll(out, (dy, dx), axis=(0, 1))
+            kn = np.roll(known, (dy, dx), axis=(0, 1))
+            acc += sh * kn[..., None]
+            cnt += kn
+        upd = mask & (cnt > 0)
+        out[upd] = acc[upd] / cnt[upd][..., None]
+        known = known | upd
+    return out
+
+
+def cmd_poses(a):
+    """Poses clés d'une attaque (images fixes Midjourney) -> planche alignée + main et angle de l'arme.
+    Le bâton (ou l'arme) dessiné par MJ est effacé : le jeu pose l'arme en couche à part."""
+    from PIL import ImageDraw
+    spec = json.load(open(a.spec))
+    base = os.path.dirname(a.spec) if not a.sources else a.sources
+    s_ref = spec["taille_ref"] / spec["hauteur_ref"]
+    W = H = int(a.hauteur * 1.9)
+    foot = (W // 2, int(H * 0.92))
+    frames, mains, angles, noms = [], [], [], []
+    for nom, ps in spec["poses"].items():
+        # Détourage mis en cache (BiRefNet manque de mémoire sur plusieurs images d'affilée :
+        # relancer la commande reprend où elle s'était arrêtée).
+        cache = os.path.join(a.cache, os.path.splitext(ps["src"])[0] + "-detoure.png")
+        if os.path.exists(cache):
+            im = Image.open(cache).convert("RGBA")
+        else:
+            im = key_ai(Image.open(os.path.join(base, ps["src"])).convert("RGB"))
+            os.makedirs(a.cache, exist_ok=True)
+            im.save(cache)
+            if a.une_seule:
+                sys.exit("détouré : " + cache + " (relancer pour la suite)")
+        mask_img = Image.new("L", im.size, 0)
+        d = ImageDraw.Draw(mask_img)
+        for x0, y0, x1, y1, w in ps.get("baton", []):
+            d.line([x0, y0, x1, y1], fill=255, width=int(w))
+        for x0, y0, x1, y1 in ps.get("boites", []):
+            d.rectangle([x0, y0, x1, y1], fill=255)
+        mask = np.asarray(mask_img) > 0
+        arr = np.asarray(im).astype(np.float32)
+        arr = _fill_masked(arr, mask)
+        # L'alpha rempli reste flou là où il n'y avait que du fond : on le recoupe net.
+        al = arr[..., 3]
+        al[mask] = np.where(al[mask] > 160, 255, 0)
+        im = Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8), "RGBA")
+        k = s_ref * spec["tete_ref"] / ps["tete"]
+        im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
+        ox = foot[0] - ps["appui"][0] * k
+        oy = foot[1] - ps["appui"][1] * k
+        f = Image.new("RGBA", (W, H))
+        f.alpha_composite(im, (round(ox), round(oy)))
+        frames.append(f)
+        mains.append([round(ps["main"][0] * k + ox, 1), round(ps["main"][1] * k + oy, 1)])
+        angles.append(ps["angle"])
+        noms.append(nom)
+    if a.couleurs:
+        frames = quantize_palette(frames, a.couleurs)
+    sheet = Image.new("RGBA", (W * len(frames), H))
+    for i, f in enumerate(frames):
+        sheet.alpha_composite(f, (i * W, 0))
+    save(sheet, a.out.rstrip("/") + ".png")
+    meta = {"images": len(frames), "largeur": W, "hauteur": H, "appui": list(foot), "taille": a.hauteur,
+            "echelle_jeu": 1.0 / SCALE, "poses": noms, "mains": mains, "angles": angles}
+    with open(a.out.rstrip("/") + ".json", "w") as fh:
+        json.dump(meta, fh, indent=1)
+    print(json.dumps(meta))
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -362,6 +441,14 @@ def main():
     sp.add_argument("--couleurs", type=int, default=48)
     sp.add_argument("--modele", default="isnet-general-use", help="modèle rembg (plus léger que BiRefNet pour les vidéos)")
     sp.set_defaults(fn=cmd_wendel)
+    sp = sub.add_parser("poses", help="poses clés d'une attaque -> planche + main et angle de l'arme")
+    sp.add_argument("spec"); sp.add_argument("out")
+    sp.add_argument("--sources", default="", help="dossier des images MJ (sinon celui du fichier de poses)")
+    sp.add_argument("--hauteur", type=int, default=112)
+    sp.add_argument("--couleurs", type=int, default=48)
+    sp.add_argument("--cache", default="/tmp/art-poses", help="détourages déjà faits")
+    sp.add_argument("--une-seule", action="store_true", help="s'arrêter après chaque nouveau détourage")
+    sp.set_defaults(fn=cmd_poses)
     a = p.parse_args()
     a.fn(a)
 
