@@ -33,6 +33,22 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _paper and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F2:
 		set_enabled(not enabled)
+	elif _paper and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F3:
+		_toggle_echelle()
+
+
+## F3 : contrôle d'échelle (grille en mètres, hitbox, silhouette de 1,80 m près de chaque décor).
+func _toggle_echelle() -> void:
+	var old := get_tree().get_nodes_in_group("echelle_debug")
+	if not old.is_empty():
+		for n in old:
+			n.queue_free()
+		return
+	for room in get_tree().root.find_children("*", "Room", true, false):
+		var d := EchelleDebug.new()
+		d.add_to_group("echelle_debug")
+		room.add_child(d)
+		d.room = room
 
 
 func set_enabled(on: bool) -> void:

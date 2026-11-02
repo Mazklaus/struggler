@@ -79,7 +79,8 @@ func setup(r: Room, zone_dir: String, zone: Dictionary, salle: Dictionary) -> vo
 	for dc in salle.get("decors", []):
 		var sp := Sprite2D.new()
 		sp.texture = load(dir + dc.image)
-		var k: float = dc.get("echelle", 0.5)
+		# Taille réelle en mètres (1 case = 1 m) ; « echelle » reste accepté pour un réglage brut.
+		var k: float = float(dc.hauteur) * Room.TILE / sp.texture.get_height() if dc.has("hauteur") else float(dc.get("echelle", 0.5))
 		sp.scale = Vector2(k, k)
 		if dc.get("miroir", false):
 			sp.scale = Vector2(-k, k)
@@ -87,6 +88,7 @@ func setup(r: Room, zone_dir: String, zone: Dictionary, salle: Dictionary) -> vo
 		sp.offset = Vector2(0, -sp.texture.get_height() * 0.5)
 		sp.position = Vector2(float(dc.x) * Room.TILE, float(dc.y) * Room.TILE + 4.0)
 		sp.z_index = 40 if dc.get("devant", false) else -12
+		sp.set_meta("decor_m", float(sp.texture.get_height()) * k / Room.TILE)
 		# Teinté par la lumière de la salle, pour qu'il ne paraisse pas collé.
 		sp.modulate = Color.WHITE.lerp(Color(pal.get("lumiere", "ffffff")), 0.35)
 		add_child(sp)

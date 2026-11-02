@@ -290,7 +290,8 @@ def cmd_wendel(a):
     sheet_path = a.out.rstrip("/") + ".png"
     save(sheet, sheet_path)
     meta = {"images": len(frames), "largeur": W, "hauteur": H, "fps": a.fps,
-            "appui": list(foot), "boucle": bool(a.boucle), "echelle_jeu": 1.0 / SCALE}
+            "appui": list(foot), "boucle": bool(a.boucle), "echelle_jeu": 1.0 / SCALE,
+            "taille": a.hauteur}   # pieds -> tête en px dans la planche ; le jeu en déduit l'échelle
     with open(a.out.rstrip("/") + ".json", "w") as fh:
         json.dump(meta, fh, indent=1)
     os.rmdir(a.out) if not os.listdir(a.out) else None

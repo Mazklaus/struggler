@@ -6,6 +6,9 @@ extends Sprite2D
 
 const DIR := "res://art/personnages/wendel/"
 const BODY_H := 56.0   # hauteur du corps du Player (pieds au centre + 28)
+## Échelle du jeu : 1 case = 1 m. Wendel mesure 1,95 m dessiné (cheveux compris), soit ~62 px :
+## le dessin déborde un peu de sa hitbox (28 × 56 px), qui ne change pas.
+const HAUTEUR_M := 1.95
 
 var player: Player
 var anims := {}        # nom -> {"tex", "n", "w", "h", "fps", "appui", "boucle"}
@@ -55,7 +58,7 @@ func _process(delta: float) -> void:
 	var n: int = m.images
 	var i := int(_t * float(m.fps))
 	i = i % n if m.get("boucle", true) else mini(i, n - 1)
-	var k: float = m.get("echelle_jeu", 0.5)
+	var k: float = HAUTEUR_M * Room.TILE / float(m.taille) if m.has("taille") else float(m.get("echelle_jeu", 0.5))
 	region_rect = Rect2(i * float(m.largeur), 0, float(m.largeur), float(m.hauteur))
 	scale = Vector2(k * player.facing, k)
 	# Le point d'appui de la planche (pieds) se pose sous les pieds du Player.

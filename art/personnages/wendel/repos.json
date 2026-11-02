@@ -8,5 +8,6 @@
   195
  ],
  "boucle": true,
- "echelle_jeu": 0.5
+ "echelle_jeu": 0.5,
+ "taille": 112
 }
