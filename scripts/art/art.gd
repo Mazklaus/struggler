@@ -35,6 +35,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		set_enabled(not enabled)
 	elif _paper and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F3:
 		_toggle_echelle()
+	elif _paper and event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F4:
+		_cycle_zoom()
+
+
+## F4 : essayer plusieurs distances de caméra (1,15 = ancienne ; 1,35 = par défaut ; 1,5 = très proche).
+func _cycle_zoom() -> void:
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	var steps := [1.15, 1.35, 1.5]
+	var i := 0
+	for j in steps.size():
+		if absf(cam.zoom.x - steps[j]) < 0.01:
+			i = (j + 1) % steps.size()
+	cam.zoom = Vector2(steps[i], steps[i])
+	print("Zoom caméra : ", steps[i])
 
 
 ## F3 : contrôle d'échelle (grille en mètres, hitbox, silhouette de 1,80 m près de chaque décor).
