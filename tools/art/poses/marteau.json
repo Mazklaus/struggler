@@ -1,5 +1,5 @@
 {
- "note": "Coup de côté du Marteau en poses clés (images Midjourney K1-K4). Coordonnées en pixels de l'image source 1024². baton : traits [x0,y0,x1,y1,épaisseur] effacés (le bâton ou le marteau de MJ) ; boites : rectangles effacés. tete : hauteur de la tête (haut des cheveux au menton), pour mettre les poses à la même échelle. appui : point sous les hanches, au sol. main : où se pose la poignée de l'arme ; angle : direction du manche vers la tête de l'arme, en degrés (0 = vers l'avant, positif = vers le bas). L'angle est celui de l'arme du jeu, pas forcément celui du bâton de MJ (à l'armé, la tête du marteau part derrière). teinte_ref : poses dont on reprend les couleurs (pour une image MJ partie dans une autre teinte). recadrage : [x0,y0,x1,y1] de l'image à garder avant détourage (cadre parasite). Poses par coup : garde/arme/impact/suite (côté), haut_*, bas_* (en l'air).",
+ "note": "Coup de côté du Marteau en poses clés (images Midjourney K1-K4). Coordonnées en pixels de l'image source 1024². baton : traits [x0,y0,x1,y1,épaisseur] effacés (le bâton ou le marteau de MJ) ; boites : rectangles effacés. tete : hauteur de la tête (haut des cheveux au menton), pour mettre les poses à la même échelle. appui : point sous les hanches, au sol. main : où se pose la poignée de l'arme ; angle : direction du manche vers la tête de l'arme, en degrés (0 = vers l'avant, positif = vers le bas). L'angle est celui de l'arme du jeu, pas forcément celui du bâton de MJ (à l'armé, la tête du marteau part derrière). teinte_ref : poses dont on reprend les couleurs (pour une image MJ partie dans une autre teinte). recadrage : [x0,y0,x1,y1] de l'image à garder avant détourage (cadre parasite). Poses par coup : garde/arme/impact/suite (côté), haut_*, bas_* (en l'air), lourd_* (coup lourd chargé ; sans lourd_impact, l'impact de côté sert).",
  "taille_ref": 117,
  "tete_ref": 125,
  "hauteur_ref": 955,
@@ -265,6 +265,80 @@
      745,
      852,
      888
+    ]
+   ]
+  },
+  "lourd_arme": {
+   "src": "K9.png",
+   "tete": 165,
+   "appui": [
+    520,
+    960
+   ],
+   "main": [
+    690,
+    265
+   ],
+   "angle": -160,
+   "baton": [
+    [
+     385,
+     150,
+     515,
+     182,
+     40
+    ],
+    [
+     712,
+     272,
+     835,
+     324,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     292,
+     62,
+     412,
+     215
+    ]
+   ]
+  },
+  "lourd_impact": {
+   "src": "K10.png",
+   "tete": 175,
+   "appui": [
+    390,
+    965
+   ],
+   "main": [
+    530,
+    620
+   ],
+   "angle": 37,
+   "baton": [
+    [
+     575,
+     655,
+     825,
+     850,
+     40
+    ],
+    [
+     92,
+     262,
+     300,
+     420,
+     40
+    ]
+   ],
+   "boites": [
+    [
+     775,
+     808,
+     962,
+     978
     ]
    ]
   }

@@ -17,12 +17,21 @@ func _ready() -> void:
 	Engine.time_scale = 0.05
 	var p: Player = game.player
 	p.facing = 1
-	# Coup de côté, vers le haut, puis vers le bas en l'air (dir 0, 1, 2).
-	for dir in [0, 1, 2]:
+	# Coup de côté, vers le haut, vers le bas en l'air, puis lourd chargé (dir 0, 1, 2, 3).
+	# Un 2e argument choisit les coups : -- <dossier> 3
+	var dirs := [0, 1, 2, 3]
+	if OS.get_cmdline_user_args().size() > 1:
+		dirs = [int(OS.get_cmdline_user_args()[1])]
+	for dir in dirs:
 		Engine.time_scale = 1.0
 		if dir == 2:
 			p.velocity = Vector2(0, -700)
 			await get_tree().create_timer(0.12).timeout
+		if dir == 3:
+			p._set_state(Player.S.CHARGE)
+			await get_tree().process_frame
+			get_viewport().get_texture().get_image().save_png(out + "/attaque_3_charge.png")
+			p._charge = 1.0
 		Engine.time_scale = 0.05
 		p._start_attack(dir, false)
 		var n := 0

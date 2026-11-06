@@ -97,19 +97,21 @@ func _process(delta: float) -> void:
 ## l'arme dans la main et la traînée. Renvoie false hors attaque.
 func _attack_pose() -> bool:
 	var m: Dictionary = poses.get("marteau", {})
-	if m.is_empty() or player.state != Player.S.ATTACK or player.weapon != Player.W.MARTEAU or player._atk.is_empty():
+	# Charge du coup lourd : Wendel tient la pose d'armé du coup lourd.
+	var charge: bool = player.state == Player.S.CHARGE and player.weapon == Player.W.MARTEAU
+	if m.is_empty() or player.weapon != Player.W.MARTEAU or not (charge or (player.state == Player.S.ATTACK and not player._atk.is_empty())):
 		if _pose >= 0:
 			_pose = -1
 			current = ""
 			_arme.visible = false
 			_trainee.hide_now()
 		return false
-	var a: Dictionary = player._atk
+	var a: Dictionary = player._atk if not charge else {"dir": 3, "windup": 1e9, "active": 0.0, "recovery": 0.0}
 	var t: float = player._state_time
 	var names: Array = m.poses
-	# Poses du coup selon sa direction : côté (et lourd, pour l'instant), haut, bas en l'air.
+	# Poses du coup selon sa direction : côté, haut, bas en l'air, lourd (dir 3).
 	var dir: int = a.get("dir", 0)
-	var pre := "haut_" if dir == 1 else ("bas_" if dir == 2 else "")
+	var pre := "haut_" if dir == 1 else ("bas_" if dir == 2 else ("lourd_" if dir == 3 else ""))
 	if pre != "" and names.find(pre + "arme") < 0:
 		pre = ""
 	var nom := "garde" if pre != "bas_" else pre + "impact"
@@ -118,8 +120,10 @@ func _attack_pose() -> bool:
 	elif t < a.windup + a.active:
 		nom = pre + "impact"
 	elif t < a.windup + a.active + a.recovery * 0.55:
-		nom = "suite" if pre == "" else pre + "impact"
+		nom = "suite" if pre in ["", "lourd_"] else pre + "impact"
 	var i := names.find(nom)
+	if i < 0:   # pose pas encore dessinée : celle du coup de côté
+		i = names.find(nom.trim_prefix(pre))
 	if _pose == -1:
 		current = ""
 	_pose = i
