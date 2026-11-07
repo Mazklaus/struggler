@@ -160,6 +160,7 @@ func _build_bourrelet(b: Dictionary, zone: Dictionary, pal: Dictionary) -> void:
 	var ink := Color(pal.get("encre", "1d1420"))
 	var step := 0.25
 	var x := 0.0
+	var bumps := PackedFloat32Array()   # hauteur de chaque amas, pour y planter les silhouettes
 	while x <= w:
 		var xi := clampi(int(x), 0, w - 1)
 		var base := sol_y[xi]
@@ -175,6 +176,7 @@ func _build_bourrelet(b: Dictionary, zone: Dictionary, pal: Dictionary) -> void:
 		var bl := (sol_y[maxi(xi - 1, 0)] + base * 2.0 + sol_y[mini(xi + 1, w - 1)]) / 4.0
 		var y := (bl + 1.6 - bump) * T
 		pts.append(Vector2(x * T, y))
+		bumps.append(bump)
 		cols.append(lit.lerp(ink, 0.35))
 		x += step
 	var bottom := float(h) * T + 400.0
@@ -210,8 +212,115 @@ func _build_bourrelet(b: Dictionary, zone: Dictionary, pal: Dictionary) -> void:
 	_bour = Node2D.new()
 	_bour.z_index = 60
 	_bour.z_as_relative = false
+	# Les silhouettes d'abord : le bourrelet, dessiné par-dessus, enterre leur pied.
+	_build_silhouettes(b, pts, bumps, step, sol_y, w, h, seed, pal)
+	_build_suspendus(b, rows, sol_y, w, seed, pal)
 	_bour.add_child(poly)
 	add_child(_bour)
+
+
+# Teinte des silhouettes du bourrelet : la même que lui (ombre mêlée d'encre), un peu plus sombre,
+# compensée de ce que le shader premier_plan assombrit.
+func _teinte_bourrelet(pal: Dictionary) -> Color:
+	var c := Color(pal.get("ombre", "3a2a44")).lerp(Color(pal.get("encre", "1d1420")), 0.35)
+	return Color(c.r * 1.6, c.g * 1.6, c.b * 1.6)
+
+
+# Silhouettes plantées dans les amas du bourrelet : une liste d'images par ambiance (ce qu'il y a
+# au-dessus du sol à cet endroit), « * » pour les autres. Chaque amas assez haut reçoit une image,
+# avec au moins « ecart » cases entre deux.
+func _build_silhouettes(b: Dictionary, pts: PackedVector2Array, bumps: PackedFloat32Array,
+		step: float, sol_y: PackedFloat32Array, w: int, h: int, seed: float, pal: Dictionary) -> void:
+	var lists: Dictionary = b.get("silhouettes", {})
+	if lists.is_empty():
+		return
+	var T := float(Room.TILE)
+	var haut: Array = b.get("hauteur", [2.0, 3.0])
+	var ecart := float(b.get("ecart", 7.0))
+	var seuil := float(b.get("seuil", 0.9))
+	var sh: Shader = load("res://art/shaders/premier_plan.gdshader")
+	var win := int(3.0 / step)
+	var last := -1000.0
+	var n := 0
+	for i in bumps.size():
+		var v := bumps[i]
+		if v < seuil:
+			continue
+		var top := true
+		for j in range(maxi(i - win, 0), mini(i + win + 1, bumps.size())):
+			if bumps[j] > v:
+				top = false
+				break
+		var x := float(i) * step
+		if not top or x - last < ecart:
+			continue
+		var xi := clampi(int(x), 0, w - 1)
+		var amb := "*"
+		if not amb_map.is_empty() and _amb_w == w:
+			amb = amb_map[clampi(int(sol_y[xi]) - 2, 0, h - 1) * w + xi]
+		var l: Array = lists.get(amb, lists.get("*", []))
+		if l.is_empty():
+			continue
+		last = x
+		var r := absf(sin(x * 12.9898 + seed) * 43758.5453)
+		r -= floorf(r)
+		var tex: Texture2D = load(dir + str(l[int(r * 997.0) % l.size()]))
+		var sp := Sprite2D.new()
+		sp.texture = tex
+		sp.centered = false
+		var hm: float = lerpf(float(haut[0]), float(haut[1]), r)
+		var k := hm * T / float(tex.get_height())
+		sp.scale = Vector2(k, k)
+		sp.flip_h = int(r * 7919.0) % 2 == 1
+		# pied enfoncé de 0,8 m dans l'amas
+		sp.position = Vector2(x * T - tex.get_width() * k * 0.5, pts[i].y + 0.8 * T - hm * T)
+		var m := ShaderMaterial.new()
+		m.shader = sh
+		m.set_shader_parameter("c_encre", _teinte_bourrelet(pal))
+		m.set_shader_parameter("flou", float(b.get("flou", 2.0)) + 0.6)
+		sp.material = m
+		_bour.add_child(sp)
+		n += 1
+
+
+# Chaînes qui pendent du plafond, devant tout (même parallaxe que le bourrelet). Seulement là où
+# un plafond existe à moins de 10 m au-dessus du sol, et jamais plus bas que 2,4 m au-dessus de lui.
+func _build_suspendus(b: Dictionary, rows: Array, sol_y: PackedFloat32Array, w: int,
+		seed: float, pal: Dictionary) -> void:
+	var l: Array = b.get("suspendus", [])
+	if l.is_empty():
+		return
+	var T := float(Room.TILE)
+	var ecart := float(b.get("ecart_suspendus", 13.0))
+	var sh: Shader = load("res://art/shaders/premier_plan.gdshader")
+	var x := 3.0 + fmod(seed, 5.0)
+	while x < w - 2:
+		var r := absf(sin(x * 78.233 + seed) * 43758.5453)
+		r -= floorf(r)
+		var xi := int(x)
+		var sy := int(sol_y[xi])
+		var c := sy - 1
+		while c >= 0 and not ((rows[c] as String)[xi] in "#XwbMota^"):
+			c -= 1
+		var libre := float(sy - 1 - c)
+		if c >= 0 and libre <= 10.0 and libre >= 4.0:
+			var tex: Texture2D = load(dir + str(l[int(r * 997.0) % l.size()]))
+			var hm := minf(lerpf(3.0, 5.0, r), libre + 0.6 - 2.4)
+			var k := hm * T / float(tex.get_height())
+			var sp := Sprite2D.new()
+			sp.texture = tex
+			sp.centered = false
+			sp.scale = Vector2(k, k)
+			sp.flip_h = r > 0.5
+			# le haut de l'image rentre de 0,6 m dans le plafond
+			sp.position = Vector2(x * T - tex.get_width() * k * 0.5, (float(c + 1) - 0.6) * T)
+			var m := ShaderMaterial.new()
+			m.shader = sh
+			m.set_shader_parameter("c_encre", _teinte_bourrelet(pal))
+			m.set_shader_parameter("flou", float(b.get("flou", 2.0)) + 0.6)
+			sp.material = m
+			_bour.add_child(sp)
+		x += ecart * lerpf(0.7, 1.3, r)
 
 
 func _update_premier_plan() -> void:
