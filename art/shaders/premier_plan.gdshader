@@ -7,5 +7,5 @@ uniform float flou = 2.2;
 void fragment() {
 	vec4 t = textureLod(TEXTURE, UV, flou);
 	vec3 col = mix(c_encre.rgb * 0.55, t.rgb * 0.25, 0.25);
-	COLOR = vec4(col, t.a * 0.96);
+	COLOR = vec4(col, t.a * 0.96 * COLOR.a);   // COLOR.a : modulate (effacement devant Wendel)
 }

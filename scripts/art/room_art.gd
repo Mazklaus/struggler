@@ -123,6 +123,7 @@ func _build_premier_plan(salle: Dictionary, pal: Dictionary) -> void:
 ## dans Silksong. Rien à dessiner : il se recalcule quand la salle change de forme.
 var _bour: Node2D
 var _ciel_name := ""
+var _sil: Array[Sprite2D] = []   # silhouettes du bourrelet, qui s'effacent devant Wendel
 var _bour_f := 1.15
 
 func _build_bourrelet(b: Dictionary, zone: Dictionary, pal: Dictionary) -> void:
@@ -239,15 +240,20 @@ func _build_silhouettes(b: Dictionary, pts: PackedVector2Array, bumps: PackedFlo
 	var ecart := float(b.get("ecart", 7.0))
 	var seuil := float(b.get("seuil", 0.9))
 	var sh: Shader = load("res://art/shaders/premier_plan.gdshader")
+	var win := int(3.0 / step)
 	var last := -1000.0
 	var n := 0
 	for i in bumps.size():
 		var v := bumps[i]
 		if v < seuil:
 			continue
+		var top := true
+		for j in range(maxi(i - win, 0), mini(i + win + 1, bumps.size())):
+			if bumps[j] > v:
+				top = false
+				break
 		var x := float(i) * step
-		# sur le flanc des amas (pas au sommet près des passages, trop haut : il cacherait Wendel)
-		if v > 1.7 or x - last < ecart:
+		if not top or x - last < ecart:
 			continue
 		var xi := clampi(int(x), 0, w - 1)
 		var amb := "*"
@@ -263,21 +269,20 @@ func _build_silhouettes(b: Dictionary, pts: PackedVector2Array, bumps: PackedFlo
 		var sp := Sprite2D.new()
 		sp.texture = tex
 		sp.centered = false
-		# Pied enfoncé de 0,4 m dans l'amas, le haut à 1,1 m au-dessus du sol (le bourrelet est
-		# 1,6 m sous le sol, moins la bosse v) : à hauteur de taille, Wendel reste visible.
-		var hm: float = minf(3.1 - v, float(haut[1]))
-		if hm < float(haut[0]):
-			continue
+		# Au niveau du sol, pied enfoncé de 0,6 m dans l'amas. Si Wendel passe derrière, la
+		# silhouette s'efface (voir _update_premier_plan).
+		var hm: float = lerpf(float(haut[0]), float(haut[1]), r)
 		var k := hm * T / float(tex.get_height())
 		sp.scale = Vector2(k, k)
 		sp.flip_h = int(r * 7919.0) % 2 == 1
-		sp.position = Vector2(x * T - tex.get_width() * k * 0.5, pts[i].y + 0.4 * T - hm * T)
+		sp.position = Vector2(x * T - tex.get_width() * k * 0.5, pts[i].y + 0.6 * T - hm * T)
 		var m := ShaderMaterial.new()
 		m.shader = sh
 		m.set_shader_parameter("c_encre", _teinte_bourrelet(pal))
 		m.set_shader_parameter("flou", float(b.get("flou", 2.0)) + 0.6)
 		sp.material = m
 		_bour.add_child(sp)
+		_sil.append(sp)
 		n += 1
 
 
@@ -318,6 +323,7 @@ func _build_suspendus(b: Dictionary, rows: Array, sol_y: PackedFloat32Array, w: 
 			m.set_shader_parameter("flou", float(b.get("flou", 2.0)) + 0.6)
 			sp.material = m
 			_bour.add_child(sp)
+			_sil.append(sp)
 		x += ecart * lerpf(0.7, 1.3, r)
 
 
@@ -330,9 +336,28 @@ func _update_premier_plan() -> void:
 		# Chaque point p du bourrelet s'affiche en p + (p - c)(f - 1) = f·p - (f - 1)·c.
 		_bour.scale = Vector2(_bour_f, _bour_f)
 		_bour.position = -c * (_bour_f - 1.0)
+		_fade_silhouettes()
 	for e in _pp:
 		var base: Vector2 = e[1]
 		(e[0] as Sprite2D).position = base + (base - c) * (float(e[2]) - 1.0)
+
+
+# Une silhouette qui couvre Wendel devient transparente (jusqu'à 25 % d'opacité), en douceur.
+func _fade_silhouettes() -> void:
+	if _sil.is_empty():
+		return
+	var w := get_tree().get_first_node_in_group("wendel_art") as Node2D
+	if w == null or not (w.get_parent() is Node2D):
+		return
+	var T := float(Room.TILE)
+	var pc := (w.get_parent() as Node2D).global_position - room.global_position
+	var pr := Rect2(pc - Vector2(0.6, 1.2) * T, Vector2(1.2, 2.2) * T)
+	for sp in _sil:
+		var sz := sp.texture.get_size() * sp.scale
+		var r := Rect2(_bour.position + sp.position * _bour.scale, sz * _bour.scale)
+		var cover := r.intersection(pr).get_area() / pr.get_area() if r.intersects(pr) else 0.0
+		var target := 1.0 - 0.75 * clampf(cover * 2.0, 0.0, 1.0)
+		sp.modulate.a = lerpf(sp.modulate.a, target, 0.12)
 
 
 func _glow(at: Vector2, c: Color, size: float) -> void:
