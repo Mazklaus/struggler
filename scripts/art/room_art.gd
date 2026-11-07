@@ -82,6 +82,8 @@ func setup(r: Room, zone_dir: String, zone: Dictionary, salle: Dictionary) -> vo
 			_glow(sp.position + Vector2(0, -sp.texture.get_height() * k * 0.3), Color(pal.get("lumiere", "ffaa66")), 1.6)
 
 	_build_premier_plan(salle, pal)
+	if salle.has("bourrelet"):
+		_build_bourrelet(salle.bourrelet, zone, pal)
 
 	# Halos chauds sur les brasiers et cercles de sel.
 	for rs in room.rests:
@@ -113,13 +115,114 @@ func _build_premier_plan(salle: Dictionary, pal: Dictionary) -> void:
 		_pp.append([sp, Vector2(float(d.x) * Room.TILE, float(d.y) * Room.TILE), float(d.get("parallaxe", 1.15))])
 
 
+## Bourrelet de premier plan : le sol de la salle lui-même, prolongé devant la caméra. Son profil
+## suit le dessus du sol (case par case, y compris les fosses), passe juste sous la ligne où l'on
+## marche et ne se lève qu'en quelques bosses — plus hautes aux passages dedans/dehors, pour les
+## cadrer. Même matière que le sol, en encre et ombre de la palette, flou. Défile à la parallaxe
+## « parallaxe » (1,15) : il glisse plus vite que le jeu, comme les rochers au bas de l'écran
+## dans Silksong. Rien à dessiner : il se recalcule quand la salle change de forme.
+var _bour: Node2D
+var _ciel_name := ""
+var _bour_f := 1.15
+
+func _build_bourrelet(b: Dictionary, zone: Dictionary, pal: Dictionary) -> void:
+	var rows: Array = Rooms.DATA[room.id].rows
+	var w: int = rows[0].length()
+	var h: int = rows.size()
+	var T := float(Room.TILE)
+	_bour_f = float(b.get("parallaxe", 1.15))
+	var sol_y := PackedFloat32Array()
+	var sol_m := PackedStringArray()
+	sol_y.resize(w)
+	sol_m.resize(w)
+	for x in w:
+		var y := h - 1
+		while y > 0 and (rows[y] as String)[x] in "#XwbMota^":
+			y -= 1
+		var top := y + 1
+		sol_y[x] = float(top) if top < h else float(h)
+		sol_m[x] = Room.MATS.get((rows[mini(top, h - 1)] as String)[x], "roche")
+	# Passages dedans/dehors le long du sol : là où la part d'intérieur franchit 1/2 juste
+	# au-dessus du sol.
+	var portes: Array[float] = []
+	if not amb_map.is_empty() and _amb_w == w:
+		var prev := -1.0
+		for x in w:
+			var yy := clampi(int(sol_y[x]) - 2, 0, h - 1)
+			var inside := 0.0 if amb_map[yy * w + x] == _ciel_name else 1.0
+			if prev >= 0.0 and inside != prev:
+				portes.append(float(x))
+			prev = inside
+	var seed := float(hash(room.id) % 1000)
+	var pts := PackedVector2Array()
+	var cols := PackedColorArray()
+	var lit := Color(pal.get("ombre", "3a2a44"))
+	var ink := Color(pal.get("encre", "1d1420"))
+	var step := 0.25
+	var x := 0.0
+	while x <= w:
+		var xi := clampi(int(x), 0, w - 1)
+		var base := sol_y[xi]
+		# Le gros du bourrelet reste sous la ligne du sol ; il n'en sort que par amas (bruit lent),
+		# plus haut près d'un passage dedans/dehors, avec un bord cassé d'éboulis.
+		var n := sin(x * 0.37 + seed) * 0.5 + sin(x * 0.11 + seed * 1.7) * 0.8 + sin(x * 0.83 + seed * 0.3) * 0.3
+		var bump := maxf(0.0, n - 0.35) * 2.4
+		for p in portes:
+			bump = maxf(bump, 3.0 * exp(-pow((x - p) / 2.2, 2.0)) + maxf(0.0, n) * 0.4)
+		# jamais plus haut qu'environ 1,4 m au-dessus du sol : il ne doit pas cacher Wendel
+		bump = minf(bump, 3.0) + sin(x * 2.7 + seed) * 0.14 + sin(x * 6.1 + seed * 2.0) * 0.07
+		# Le sol voisin, lissé : les bords d'une fosse descendent en pente, pas à pic.
+		var bl := (sol_y[maxi(xi - 1, 0)] + base * 2.0 + sol_y[mini(xi + 1, w - 1)]) / 4.0
+		var y := (bl + 1.6 - bump) * T
+		pts.append(Vector2(x * T, y))
+		cols.append(lit.lerp(ink, 0.35))
+		x += step
+	var bottom := float(h) * T + 400.0
+	pts.append(Vector2(float(w) * T, bottom))
+	cols.append(ink)
+	pts.append(Vector2(0.0, bottom))
+	cols.append(ink)
+	var poly := Polygon2D.new()
+	poly.polygon = pts
+	poly.vertex_colors = cols
+	var mname: String = b.get("matiere", "")
+	if mname == "":
+		var count := {}
+		for m in sol_m:
+			count[m] = count.get(m, 0) + 1
+		var best := 0
+		for m in count:
+			if count[m] > best:
+				best = count[m]
+				mname = m
+	var tpath: String = zone.get("matieres", {}).get(mname, "")
+	if tpath != "":
+		poly.texture = load(dir + tpath)
+		poly.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+		var uv := PackedVector2Array()
+		for q in pts:
+			uv.append(q * 1.6)
+		poly.uv = uv
+	var m := ShaderMaterial.new()
+	m.shader = load("res://art/shaders/bourrelet.gdshader")
+	m.set_shader_parameter("flou", float(b.get("flou", 2.0)))
+	poly.material = m
+	_bour = Node2D.new()
+	_bour.z_index = 60
+	_bour.z_as_relative = false
+	_bour.add_child(poly)
+	add_child(_bour)
+
+
 func _update_premier_plan() -> void:
-	if _pp.is_empty():
-		return
 	var cam := get_viewport().get_camera_2d()
 	if cam == null:
 		return
 	var c := cam.get_screen_center_position() - room.global_position
+	if _bour:
+		# Chaque point p du bourrelet s'affiche en p + (p - c)(f - 1) = f·p - (f - 1)·c.
+		_bour.scale = Vector2(_bour_f, _bour_f)
+		_bour.position = -c * (_bour_f - 1.0)
 	for e in _pp:
 		var base: Vector2 = e[1]
 		(e[0] as Sprite2D).position = base + (base - c) * (float(e[2]) - 1.0)
@@ -195,6 +298,7 @@ func _build_fonds(zone: Dictionary, salle: Dictionary, main: Dictionary) -> void
 	ambiance_map(salle, salle.get("ambiance", ""))
 	var regles: Dictionary = salle.get("regles", {})
 	var ciel: String = regles.get("ciel", salle.get("ambiance", ""))
+	_ciel_name = ciel
 	var used := {}
 	for a in amb_map:
 		used[a] = true
