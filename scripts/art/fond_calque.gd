@@ -72,11 +72,16 @@ func _build_modules(m: Dictionary) -> void:
 	for b in base:
 		texs.append(load(dir + b))
 	var cross: float = m.get("largeur", 1280.0)        # largeur couverte (hauteur si horizontal)
-	var side: float = m.get("taille", cross)            # taille d'un module en travers
 	var f: float = conf.get("parallaxe", 0.15)
+	# taille d'un module en travers. « taille_m » : ce que le module mesure en vrai, en mètres ;
+	# vu derrière le plan du jeu, il paraît réduit dans le rapport de la parallaxe (plus loin =
+	# défile moins vite = paraît plus petit). Sinon « taille » en pixels du monde (ancien réglage).
+	var side: float = m.get("taille", cross)
+	if m.has("taille_m"):
+		side = float(m.taille_m) * Room.TILE * f
 	var length := (room.size.y if vertical else room.size.x) * f + (720.0 if vertical else 1280.0) * 1.5
 	var fondu: float = m.get("fondu", 0.15) if texs.size() > 1 else 0.0
-	var cols := int(ceil(cross / (side * (1.0 - fondu)))) if m.has("taille") else 1
+	var cols := int(ceil(cross / (side * (1.0 - fondu)))) if m.has("taille") or m.has("taille_m") else 1
 	for c in cols:
 		var pos := -side * 2.0 * fmod(c * 0.37, 1.0) if c > 0 else 0.0
 		var i := c * 2 + 1 if c > 0 else 0

@@ -1,6 +1,6 @@
 {
 	"zone": "hautfer",
-	"note": "Salles de Hautfer passées en vraie DA. Une salle absente ici reste en gris. « ambiances » : catalogue des fonds de la zone (fond ou fond_modules, parallaxe, voile = opacité de la brume, palette). Une salle prend une « ambiance » par défaut ; avec « regles », chaque case prend l'ambiance de ce qu'elle a au-dessus d'elle (« ciel » si rien, sinon la lettre du bloc : t éboulis, b bois, M maçonnerie…, « * » pour les autres) ; « zones » force une ambiance sur un rectangle de cases [de, a[. « decors » : objets posés, x en tuiles (centre), y en tuiles (ligne du sol sous l'objet), « hauteur » en mètres (1 case = 1 m), « devant » pour passer devant Wendel. « lumiere » : halo chaud autour de l'objet ; « miroir » : retourné.",
+	"note": "Salles de Hautfer passées en vraie DA. Une salle absente ici reste en gris. « ambiances » : catalogue des fonds de la zone (fond ou fond_modules — « taille_m » : ce que mesure un module en vrai, en travers —, parallaxe, voile = opacité de la brume, palette). Une salle prend une « ambiance » par défaut ; avec « regles », chaque case prend l'ambiance de ce qu'elle a au-dessus d'elle (« ciel » si rien, sinon la lettre du bloc : t éboulis, b bois, M maçonnerie…, « * » pour les autres) ; « zones » force une ambiance sur un rectangle de cases [de, a[. « decors » : objets posés, x en tuiles (centre), y en tuiles (ligne du sol sous l'objet), « hauteur » en mètres (1 case = 1 m), « devant » pour passer devant Wendel. « lumiere » : halo chaud autour de l'objet ; « miroir » : retourné.",
 	"matieres": {
 		"roche": "matieres/roche.png",
 		"bois": "matieres/bois.png",
@@ -25,10 +25,10 @@
 			"fond_modules": {
 				"axe": "horizontal",
 				"largeur": 1000,
-				"taille": 420,
+				"taille_m": 4.5,
 				"base": ["modules/galerie_a.jpg", "modules/galerie_b.jpg", "modules/galerie_c.jpg", "modules/galerie_d.jpg"]
 			},
-			"parallaxe": 0.3,
+			"parallaxe": 0.85,
 			"voile": 0.45,
 			"palette": {
 				"encre": "1d1420",
@@ -41,10 +41,10 @@
 			"fond_modules": {
 				"axe": "vertical",
 				"largeur": 1600,
-				"taille": 420,
+				"taille_m": 6.0,
 				"base": ["modules/tunnel_a.jpg", "modules/tunnel_b.jpg", "modules/tunnel_c.jpg"]
 			},
-			"parallaxe": 0.3,
+			"parallaxe": 0.8,
 			"voile": 0.6,
 			"palette": {
 				"encre": "1d1420",
@@ -57,10 +57,10 @@
 			"fond_modules": {
 				"axe": "horizontal",
 				"largeur": 1000,
-				"taille": 420,
+				"taille_m": 5.0,
 				"base": ["modules/abri_a.jpg", "modules/abri_b.jpg", "modules/abri_c.jpg", "modules/abri_d.jpg"]
 			},
-			"parallaxe": 0.3,
+			"parallaxe": 0.85,
 			"voile": 0.35,
 			"palette": {
 				"encre": "1d1420",
@@ -73,7 +73,7 @@
 			"fond_modules": {
 				"axe": "vertical",
 				"largeur": 1400,
-				"taille": 420,
+				"taille_m": 7.0,
 				"base": [
 					"modules/puits_paroi_a.jpg",
 					"modules/puits_paroi_b.jpg",
@@ -82,7 +82,7 @@
 					"modules/puits_chair_b.jpg"
 				]
 			},
-			"parallaxe": 0.3,
+			"parallaxe": 0.55,
 			"voile": 0.4,
 			"palette": {
 				"encre": "0c171c",
