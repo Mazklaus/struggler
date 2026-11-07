@@ -81,8 +81,11 @@ func _build_modules(m: Dictionary) -> void:
 	var texs: Array[Texture2D] = []
 	for b in base:
 		texs.append(load(dir + b))
-	var cross: float = m.get("largeur", 1280.0)        # largeur couverte (hauteur si horizontal)
 	var f: float = conf.get("parallaxe", 0.15)
+	# Largeur couverte en travers (hauteur si horizontal) : le fond défile aussi dans cet axe, à la
+	# même fraction f que dans l'autre ; il doit donc couvrir la salle entière vue à travers f.
+	var cross := maxf(float(m.get("largeur", 1280.0)),
+			(room.size.x if vertical else room.size.y) * f + (1280.0 if vertical else 720.0) * 1.5)
 	# taille d'un module en travers. « taille_m » : ce que le module mesure en vrai, en mètres ;
 	# vu derrière le plan du jeu, il paraît réduit dans le rapport de la parallaxe (plus loin =
 	# défile moins vite = paraît plus petit). Sinon « taille » en pixels du monde (ancien réglage).
@@ -127,14 +130,9 @@ func _process(_delta: float) -> void:
 	var night := World.night_amount()
 	var tint := Color(1, 1, 1).lerp(Color(0.55, 0.6, 0.8), night)
 	if _mods:
-		# Les modules défilent à la fraction f de la caméra ; centrés dans l'autre axe.
-		var vertical: bool = conf.fond_modules.get("axe", "vertical") == "vertical"
-		var cross: float = conf.fond_modules.get("largeur", 1280.0)
-		var c := tl + view * 0.5
-		if vertical:
-			_mods.position = Vector2(c.x - cross * 0.5, tl.y * (1.0 - f))
-		else:
-			_mods.position = Vector2(tl.x * (1.0 - f), c.y - cross * 0.5)
+		# Les modules défilent à la fraction f de la caméra, dans les deux axes (avant, ils étaient
+		# collés à la caméra en travers : en sautant, le fond d'une maison montait avec Wendel).
+		_mods.position = tl * (1.0 - f)
 		_mods.modulate = tint
 	if _bg:
 		# Le fond couvre la vue et défile au moins d'une fraction f du déplacement de la caméra.
