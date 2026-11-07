@@ -23,14 +23,10 @@
 		},
 		"galerie": {
 			"fond_modules": {
-				"axe": "vertical",
-				"largeur": 1600,
+				"axe": "horizontal",
+				"largeur": 1000,
 				"taille": 420,
-				"base": [
-					"modules/puits_paroi_a.jpg",
-					"modules/puits_paroi_b.jpg",
-					"modules/puits_paroi_c.jpg"
-				]
+				"base": ["modules/galerie_a.jpg", "modules/galerie_b.jpg", "modules/galerie_c.jpg", "modules/galerie_d.jpg"]
 			},
 			"parallaxe": 0.3,
 			"voile": 0.45,
