@@ -1,6 +1,6 @@
 {
 	"zone": "hautfer",
-	"note": "Salles de Hautfer passées en vraie DA. Une salle absente ici reste en gris. « ambiances » : catalogue des fonds de la zone (fond ou fond_modules — « taille_m » : ce que mesure un module en vrai, en travers —, parallaxe, voile = opacité de la brume, palette). Une salle prend une « ambiance » par défaut ; avec « regles », chaque case prend l'ambiance de ce qu'elle a au-dessus d'elle (« ciel » si rien, sinon la lettre du bloc : t éboulis, b bois, M maçonnerie…, « * » pour les autres) ; « zones » force une ambiance sur un rectangle de cases [de, a[. « decors » : objets posés, x en tuiles (centre), y en tuiles (ligne du sol sous l'objet), « hauteur » en mètres (1 case = 1 m), « devant » pour passer devant Wendel. « lumiere » : halo chaud autour de l'objet ; « miroir » : retourné.",
+	"note": "Salles de Hautfer passées en vraie DA. Une salle absente ici reste en gris. « ambiances » : catalogue des fonds de la zone (fond ou fond_modules — « taille_m » : ce que mesure un module en vrai, en travers —, parallaxe, voile = opacité de la brume, palette). Une salle prend une « ambiance » par défaut ; avec « regles », chaque case prend l'ambiance de ce qu'elle a au-dessus d'elle (« ciel » si rien, sinon la lettre du bloc : t éboulis, b bois, M maçonnerie…, « * » pour les autres) ; « zones » force une ambiance sur un rectangle de cases [de, a[. « decors » : objets posés, x en tuiles (centre), y en tuiles (ligne du sol sous l'objet), « hauteur » en mètres (1 case = 1 m), « devant » pour passer devant Wendel. « lumiere » : halo chaud autour de l'objet ; « miroir » : retourné. « flou » (ambiance) : flou de profondeur. « premier_plan » : silhouettes sombres et floues devant tout, qui défilent plus vite que le jeu (parallaxe 1,15 par défaut), x/y en cases (y = bas de l'objet), « hauteur » en mètres. Le bord des ambiances d'intérieur suit la part de ciel visible depuis chaque case (pas de carrés).",
 	"matieres": {
 		"roche": "matieres/roche.png",
 		"bois": "matieres/bois.png",
@@ -13,6 +13,7 @@
 		"carreau_ciel": {
 			"fond": "fonds/carreau.jpg",
 			"parallaxe": 0.18,
+			"flou": 1.0,
 			"voile": 0.25,
 			"palette": {
 				"encre": "1d1420",
@@ -29,6 +30,7 @@
 				"base": ["modules/galerie_a.jpg", "modules/galerie_b.jpg", "modules/galerie_c.jpg", "modules/galerie_d.jpg"]
 			},
 			"parallaxe": 0.85,
+			"flou": 0.35,
 			"voile": 0.45,
 			"palette": {
 				"encre": "1d1420",
@@ -45,6 +47,7 @@
 				"base": ["modules/tunnel_a.jpg", "modules/tunnel_b.jpg", "modules/tunnel_c.jpg"]
 			},
 			"parallaxe": 0.8,
+			"flou": 0.35,
 			"voile": 0.6,
 			"palette": {
 				"encre": "1d1420",
@@ -61,6 +64,7 @@
 				"base": ["modules/abri_a.jpg", "modules/abri_b.jpg", "modules/abri_c.jpg", "modules/abri_d.jpg"]
 			},
 			"parallaxe": 0.85,
+			"flou": 0.35,
 			"voile": 0.35,
 			"palette": {
 				"encre": "1d1420",
@@ -120,6 +124,10 @@
 					"hauteur": 1.1,
 					"lumiere": true
 				}
+			],
+			"premier_plan": [
+				{"image": "decors/treuil.png", "x": 70, "y": 20.3, "hauteur": 5.2, "miroir": true},
+				{"image": "decors/poulie.png", "x": 96, "y": 20.4, "hauteur": 5.5}
 			],
 			"ambiance": "carreau_ciel",
 			"regles": {

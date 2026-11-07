@@ -14,6 +14,8 @@ var dir := ""
 var _blocks: ColorRect
 var amb_map := PackedStringArray()   # ambiance de chaque case (ligne par ligne), voir ambiance_map
 var _amb_w := 0
+var _solid_tiles := PackedByteArray()
+const SUB := 4   # sous-cases par case dans le masque des intérieurs
 var _maps_task := -1
 var _maps: Array = []
 var _on := true
@@ -79,10 +81,48 @@ func setup(r: Room, zone_dir: String, zone: Dictionary, salle: Dictionary) -> vo
 		if dc.get("lumiere", false):
 			_glow(sp.position + Vector2(0, -sp.texture.get_height() * k * 0.3), Color(pal.get("lumiere", "ffaa66")), 1.6)
 
+	_build_premier_plan(salle, pal)
+
 	# Halos chauds sur les brasiers et cercles de sel.
 	for rs in room.rests:
 		_glow((rs.rect as Rect2).get_center(), Color(pal.get("lumiere", "ffaa66")), 2.2)
 	apply(true)
+
+
+## Premier plan : silhouettes d'encre floues, devant Wendel, qui défilent plus vite que le jeu
+## (comme les tiges et rochers sombres au bas de l'écran dans Silksong).
+var _pp: Array = []
+
+func _build_premier_plan(salle: Dictionary, pal: Dictionary) -> void:
+	var sh: Shader = load("res://art/shaders/premier_plan.gdshader")
+	for d in salle.get("premier_plan", []):
+		var sp := Sprite2D.new()
+		sp.texture = load(dir + d.image)
+		var k: float = float(d.get("hauteur", 3.0)) * Room.TILE / sp.texture.get_height()
+		sp.scale = Vector2(-k if d.get("miroir", false) else k, k)
+		sp.centered = true
+		sp.offset = Vector2(0, -sp.texture.get_height() * 0.5)
+		sp.z_index = 60
+		sp.z_as_relative = false
+		var m := ShaderMaterial.new()
+		m.shader = sh
+		m.set_shader_parameter("c_encre", Color(pal.get("encre", "1d1420")))
+		m.set_shader_parameter("flou", float(d.get("flou", 2.2)))
+		sp.material = m
+		add_child(sp)
+		_pp.append([sp, Vector2(float(d.x) * Room.TILE, float(d.y) * Room.TILE), float(d.get("parallaxe", 1.15))])
+
+
+func _update_premier_plan() -> void:
+	if _pp.is_empty():
+		return
+	var cam := get_viewport().get_camera_2d()
+	if cam == null:
+		return
+	var c := cam.get_screen_center_position() - room.global_position
+	for e in _pp:
+		var base: Vector2 = e[1]
+		(e[0] as Sprite2D).position = base + (base - c) * (float(e[2]) - 1.0)
 
 
 func _glow(at: Vector2, c: Color, size: float) -> void:
@@ -135,33 +175,135 @@ func _process(_delta: float) -> void:
 		m.set_shader_parameter("mat_tex", ImageTexture.create_from_image(_maps[1]))
 		_blocks.visible = true
 		apply(_on)
+	if visible:
+		_update_premier_plan()
 	if visible and _blocks.material:
 		(_blocks.material as ShaderMaterial).set_shader_parameter("night", World.night_amount())
 
 
 ## Les fonds de la salle, un par ambiance. Une salle sans « regles » ni « zones » n'a qu'une
-## ambiance. Sinon chaque case vide reçoit la sienne (voir ambiance_map), et chaque fond n'est
-## visible que sur ses cases, avec un fondu de quelques cases aux frontières.
+## ambiance. Sinon l'ambiance « ciel » (l'extérieur) couvre toute la salle, et les ambiances
+## d'intérieur (sous un terril, un boisage…) se posent par-dessus. Leur bord ne suit pas les
+## cases : il vient de ce qu'on voit du ciel depuis chaque case (voir _ouverture), si bien qu'une
+## bouche de galerie s'ouvre en éventail sous la lèvre du bloc, avec un contour d'encre déchiré
+## et la lumière du dehors qui déborde un peu dedans (voir fond_ambiance.gdshader).
 func _build_fonds(zone: Dictionary, salle: Dictionary, main: Dictionary) -> void:
 	var ambs: Dictionary = zone.get("ambiances", {})
 	if not salle.has("regles") and not salle.has("zones"):
-		_add_fond(main, null)
+		_add_fond(main, null, false)
 		return
 	ambiance_map(salle, salle.get("ambiance", ""))
+	var regles: Dictionary = salle.get("regles", {})
+	var ciel: String = regles.get("ciel", salle.get("ambiance", ""))
 	var used := {}
 	for a in amb_map:
 		used[a] = true
+	if ambs.has(ciel):
+		_add_fond(ambs[ciel], null, false)
+	var interieur := _interieur(salle, ciel)
 	for a in used:
+		if a == ciel:
+			continue
 		if not ambs.has(a):
 			push_warning("ambiance inconnue : %s (salle %s)" % [a, room.id])
 			continue
-		_add_fond(ambs[a], _mask_for(a, int(salle.get("fondu_cases", 3))))
+		_add_fond(ambs[a], _mask_interieur(a, ciel, interieur, int(salle.get("fondu_cases", 3))), true)
 
 
-func _add_fond(amb: Dictionary, mask: Texture2D) -> void:
+func _add_fond(amb: Dictionary, mask: Texture2D, interieur: bool) -> void:
 	var fc := FondCalque.new()
 	add_child(fc)
-	fc.setup(room, dir, amb, mask)
+	fc.setup(room, dir, amb, mask, interieur)
+
+
+## Part d'« intérieur » de chaque case (0 dehors, 1 dedans) : 1 moins la part du ciel visible
+## depuis la case, dans un cône de ±50° vers le haut. Sous un long terril : 1 ; à l'air libre,
+## même au pied d'un mur : 0 ; sous la lèvre d'une galerie : un dégradé en éventail qui épouse
+## la forme du bloc. Les « zones » forcées (une façade en plein air) comptent comme dedans.
+func _interieur(salle: Dictionary, ciel: String) -> PackedFloat32Array:
+	var rows: Array = Rooms.DATA[room.id].rows
+	var w: int = rows[0].length()
+	var h: int = rows.size()
+	var top := 0
+	while top < h and float((rows[top] as String).count(" ")) < w * 0.1 and top < 3:
+		top += 1
+	var solid := PackedByteArray()
+	solid.resize(w * h)
+	for y in h:
+		var r: String = rows[y]
+		for x in w:
+			solid[y * w + x] = 1 if r[x] in "#XwbMota-" else 0
+	var dirs: Array[Vector2] = []
+	for k in 11:
+		var ang := deg_to_rad(-50.0 + k * 10.0)
+		dirs.append(Vector2(sin(ang), -cos(ang)) * 0.5)
+	var v := PackedFloat32Array()
+	v.resize(w * h)
+	for y in h:
+		for x in w:
+			if solid[y * w + x] == 1:
+				v[y * w + x] = 1.0
+				continue
+			var open := 0
+			for d in dirs:
+				var p := Vector2(x + 0.5, y + 0.5)
+				var ok := true
+				for st in 28:
+					p += d
+					if p.y < top:
+						break
+					var cx := int(p.x)
+					var cy := int(p.y)
+					if cx < 0 or cx >= w or cy >= h:
+						ok = false
+						break
+					if solid[cy * w + cx] == 1:
+						ok = false
+						break
+				if ok:
+					open += 1
+			v[y * w + x] = 1.0 - smoothstep(0.2, 0.6, open / 11.0)
+	# Zones forcées : dedans.
+	for z in salle.get("zones", []):
+		if z.ambiance == ciel:
+			continue
+		for y in range(int(z.de[1]), int(z.a[1])):
+			for x in range(int(z.de[0]), int(z.a[0])):
+				if x >= 0 and x < w and y >= 0 and y < h:
+					v[y * w + x] = 1.0
+	# Flou entre cases d'air seulement, puis chaque bloc prend la plus petite valeur de l'air
+	# juste au-dessus et juste en dessous : le dessus d'un terril reste « dehors » (pas de fond
+	# d'intérieur qui dépasse dans le ciel), le dessous ne tire pas le tunnel vers le dehors.
+	var air := PackedFloat32Array()
+	air.resize(w * h)
+	for i in w * h:
+		air[i] = 0.0 if solid[i] == 1 else 1.0
+		v[i] *= air[i]
+	var vb := _flou_boite(v, w, h, 1)
+	var ab := _flou_boite(air, w, h, 1)
+	for i in w * h:
+		v[i] = vb[i] / ab[i] if ab[i] > 0.01 else 0.0
+	_solid_tiles = solid
+	return v
+
+
+func _flou_boite(v: PackedFloat32Array, w: int, h: int, r: int) -> PackedFloat32Array:
+	for pass_ in 2:
+		var o := PackedFloat32Array()
+		o.resize(w * h)
+		for y in h:
+			for x in w:
+				var s := 0.0
+				var n := 0
+				for d in range(-r, r + 1):
+					var xx := x + d if pass_ == 0 else x
+					var yy := y if pass_ == 0 else y + d
+					if xx >= 0 and xx < w and yy >= 0 and yy < h:
+						s += v[yy * w + xx]
+						n += 1
+				o[y * w + x] = s / float(n)
+		v = o
+	return v
 
 
 ## Ambiance de chaque case, d'après la forme de la salle : une case regarde ce qu'elle a
@@ -207,34 +349,84 @@ func ambiance_at(cell: Vector2i) -> String:
 	return amb_map[cell.y * _amb_w + cell.x]
 
 
-## Masque d'une ambiance : une case par pixel, adouci sur « fondu » cases (flou en boîte).
-func _mask_for(a: String, fondu: int) -> Texture2D:
+## Masque d'une ambiance d'intérieur, une case par pixel : rouge = part d'intérieur de la case
+## (la forme du bord, commune à tous les intérieurs), vert = part de cette ambiance parmi les
+## intérieurs voisins (fondu de « fondu » cases entre un tunnel et un abri, sans contour).
+func _mask_interieur(a: String, ciel: String, interieur: PackedFloat32Array, fondu: int) -> Texture2D:
 	var w := _amb_w
 	var h := amb_map.size() / w
-	var v := PackedFloat32Array()
-	v.resize(w * h)
-	for i in v.size():
-		v[i] = 1.0 if amb_map[i] == a else 0.0
-	var r := maxi(fondu / 2, 0)
-	for pass_ in 2:
-		var o := PackedFloat32Array()
-		o.resize(w * h)
+	var mine := PackedFloat32Array()
+	var any := PackedFloat32Array()
+	mine.resize(w * h)
+	any.resize(w * h)
+	for i in w * h:
+		mine[i] = 1.0 if amb_map[i] == a else 0.0
+		any[i] = 1.0 if amb_map[i] != ciel else 0.0
+	var r := maxi(fondu / 2, 1)
+	# Élargi d'abord (une case du dehors sous la lèvre prend l'intérieur le plus proche).
+	mine = _flou_boite(mine, w, h, r + 1)
+	any = _flou_boite(any, w, h, r + 1)
+	# Masque à SUB pixels par case. Dans l'air : interpolation entre cases d'air seulement.
+	# Dans un bloc : la valeur de l'air juste en dessous (sinon au-dessus) — la frontière tombe
+	# au ras des blocs, sans fuite de ciel sous un plafond ni fond qui dépasse au-dessus.
+	var sol := _solid_tiles
+	var tile_v := PackedFloat32Array()
+	tile_v.resize(w * h)
+	for x in w:
 		for y in h:
-			for x in w:
-				var s := 0.0
-				var n := 0
-				for d in range(-r, r + 1):
-					var xx := x + d if pass_ == 0 else x
-					var yy := y if pass_ == 0 else y + d
-					if xx >= 0 and xx < w and yy >= 0 and yy < h:
-						s += v[yy * w + xx]
-						n += 1
-				o[y * w + x] = s / float(n)
-		v = o
-	var img := Image.create(w, h, false, Image.FORMAT_L8)
-	for y in h:
-		for x in w:
-			img.set_pixel(x, y, Color(v[y * w + x], 0, 0))
+			var i := y * w + x
+			if sol[i] == 0:
+				tile_v[i] = interieur[i]
+				continue
+			var val := -1.0
+			for yy in range(y + 1, h):
+				if sol[yy * w + x] == 0:
+					val = interieur[yy * w + x]
+					break
+			if val < 0.0:
+				for yy in range(y - 1, -1, -1):
+					if sol[yy * w + x] == 0:
+						val = interieur[yy * w + x]
+						break
+			tile_v[i] = 1.0 if val < 0.0 else val
+	var part := PackedFloat32Array()
+	part.resize(w * h)
+	for i in w * h:
+		part[i] = clampf(mine[i] / any[i], 0.0, 1.0) if any[i] > 0.001 else 0.0
+	var W := w * SUB
+	var H := h * SUB
+	var img := Image.create(W, H, false, Image.FORMAT_RGB8)
+	for fy in H:
+		for fx in W:
+			var tx := fx / SUB
+			var ty := fy / SUB
+			var ti := ty * w + tx
+			var gx := (fx + 0.5) / SUB - 0.5
+			var gy := (fy + 0.5) / SUB - 0.5
+			var x0 := clampi(int(floor(gx)), 0, w - 1)
+			var y0 := clampi(int(floor(gy)), 0, h - 1)
+			var x1 := mini(x0 + 1, w - 1)
+			var y1 := mini(y0 + 1, h - 1)
+			var ux := clampf(gx - x0, 0.0, 1.0)
+			var uy := clampf(gy - y0, 0.0, 1.0)
+			var rv := 0.0
+			var g := 0.0
+			var sw := 0.0
+			for k in 4:
+				var cx := x1 if k & 1 else x0
+				var cy := y1 if k & 2 else y0
+				var wt := (ux if k & 1 else 1.0 - ux) * (uy if k & 2 else 1.0 - uy)
+				var ci := cy * w + cx
+				g += part[ci] * wt
+				# dans l'air, on n'interpole qu'avec l'air ; dans un bloc, valeur du bloc
+				if sol[ti] == 0 and sol[ci] == 1:
+					continue
+				if sol[ti] == 1 and sol[ci] == 0:
+					continue
+				rv += tile_v[ci] * wt
+				sw += wt
+			rv = rv / sw if sw > 0.0 else tile_v[ti]
+			img.set_pixel(fx, fy, Color(rv, g, 0))
 	return ImageTexture.create_from_image(img)
 
 

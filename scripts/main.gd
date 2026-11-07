@@ -376,11 +376,12 @@ func _update_camera() -> void:
 	if not is_instance_valid(player):
 		return
 	# Caméra proche à la Silksong : avance dans le sens de la marche (glissée, pas d'à-coup au demi-tour),
+	# cadre surtout au-dessus de Wendel (comme Silksong : pieds vers le bas de l'écran),
 	# et regarde vers le bas pendant une chute longue.
 	var dt := get_process_delta_time()
 	var want_x := player.facing * 70.0 + clampf(player.velocity.x * 0.12, -40.0, 40.0)
 	_cam_lead.x = move_toward(_cam_lead.x, want_x, 260.0 * dt)
-	var want_y := -30.0 + (clampf((player.velocity.y - 300.0) * 0.25, 0.0, 120.0) if not player.is_on_floor() else 0.0)
+	var want_y := -90.0 + (clampf((player.velocity.y - 300.0) * 0.25, 0.0, 120.0) if not player.is_on_floor() else 0.0)
 	_cam_lead.y = move_toward(_cam_lead.y, want_y, 220.0 * dt)
 	camera.position = player.position + _cam_lead
 
