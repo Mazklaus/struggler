@@ -55,14 +55,10 @@
 		},
 		"abri": {
 			"fond_modules": {
-				"axe": "vertical",
-				"largeur": 1600,
+				"axe": "horizontal",
+				"largeur": 1000,
 				"taille": 420,
-				"base": [
-					"modules/puits_paroi_a.jpg",
-					"modules/puits_paroi_b.jpg",
-					"modules/puits_paroi_c.jpg"
-				]
+				"base": ["modules/abri_a.jpg", "modules/abri_b.jpg", "modules/abri_c.jpg", "modules/abri_d.jpg"]
 			},
 			"parallaxe": 0.3,
 			"voile": 0.35,
