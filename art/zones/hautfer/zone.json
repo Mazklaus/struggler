@@ -46,7 +46,7 @@
 				"axe": "vertical",
 				"largeur": 1600,
 				"taille": 420,
-				"base": ["modules/tunnel_a.jpg", "modules/tunnel_b.jpg"]
+				"base": ["modules/tunnel_a.jpg", "modules/tunnel_b.jpg", "modules/tunnel_c.jpg"]
 			},
 			"parallaxe": 0.3,
 			"voile": 0.6,
