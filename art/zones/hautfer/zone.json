@@ -135,6 +135,16 @@
 					{"image": "couches/e4a_planches.jpg", "parallaxe": 0.85, "flou": 0.6, "voile": 0.45, "teinte": "ombre", "hauteur": 10, "sol": 19.5, "repere": [28, 16]},
 					{"image": "couches/e4b_muret.png", "parallaxe": 0.92, "flou": 0.3, "voile": 0.3, "teinte": "ombre", "hauteur": 2.2, "sol": 19.6, "enfonce": 0.3, "repere": [28, 16]},
 					{"image": "couches/e4c_charpente.png", "parallaxe": 0.96, "flou": 0.15, "voile": 0.2, "teinte": "ombre", "hauteur": 5.5, "sol": 19.7, "enfonce": 0.4, "miroir": false, "repere": [28, 16]}
+				],
+				"tunnel": [
+					{"image": "couches/ct1_paroi.jpg", "parallaxe": 0.85, "flou": 0.6, "voile": 0.4, "teinte": "ombre", "hauteur": 8, "sol": 19.5, "repere": [46, 17]},
+					{"elements": [{"image": "couches/ct2_etais.png", "x": 38, "hauteur": 2.8}, {"image": "couches/ct2_etais.png", "x": 47, "hauteur": 2.6, "miroir": true}, {"image": "couches/ct2_etais.png", "x": 55, "hauteur": 2.8}], "parallaxe": 0.92, "flou": 0.2, "voile": 0.12, "teinte": "ombre", "sol": 19.4, "repere": [46, 17]},
+					{"elements": [{"image": "couches/ct3_eboulis.png", "x": 41, "hauteur": 1.4}, {"image": "couches/ct3_eboulis.png", "x": 52, "hauteur": 1.2, "miroir": true}], "parallaxe": 0.96, "flou": 0.15, "voile": 0.3, "teinte": "ombre", "sol": 19.6, "repere": [46, 17]}
+				],
+				"galerie": [
+					{"image": "couches/cg1_paroi.jpg", "parallaxe": 0.85, "flou": 0.6, "voile": 0.45, "teinte": "ombre", "hauteur": 9, "sol": 19.5, "repere": [8, 17]},
+					{"elements": [{"image": "couches/cg2_arcade.png", "x": 4, "hauteur": 6}, {"image": "couches/cg2_arcade.png", "x": 12, "hauteur": 6, "miroir": true}], "parallaxe": 0.92, "flou": 0.3, "voile": 0.35, "teinte": "ombre", "sol": 19.4, "enfonce": 0.3, "repere": [8, 17]},
+					{"elements": [{"image": "couches/cg3_bricabrac.png", "x": 8, "hauteur": 1.6}], "parallaxe": 0.96, "flou": 0.15, "voile": 0.25, "teinte": "ombre", "sol": 19.6, "repere": [8, 17]}
 				]},
 			"bourrelet": {"parallaxe": 1.15, "flou": 1.3, "hauteur": [2.2, 3.2], "silhouettes": {"tunnel": ["premier_plan/etais_1.png", "premier_plan/etais_2.png", "premier_plan/etais_3.png", "premier_plan/etais_4.png"], "carreau_ciel": ["premier_plan/ferraille_1.png", "premier_plan/ferraille_2.png", "premier_plan/ferraille_3.png", "premier_plan/ferraille_4.png"], "*": ["premier_plan/planches_1.png", "premier_plan/planches_2.png", "premier_plan/planches_3.png", "premier_plan/planches_4.png"]}, "suspendus": ["premier_plan/chaine_1.png", "premier_plan/chaine_2.png", "premier_plan/chaine_3.png", "premier_plan/chaine_4.png"]},
 			"ambiance": "carreau_ciel",
