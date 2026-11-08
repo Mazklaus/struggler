@@ -17,6 +17,8 @@ uniform bool interieur = false;
 uniform float flou = 0.0;         // flou de profondeur (niveau de mipmap)
 uniform vec4 c_encre : source_color = vec4(0.11, 0.08, 0.13, 1.0);
 uniform vec4 c_lumiere : source_color = vec4(0.95, 0.66, 0.4, 1.0);
+uniform vec4 voile_c : source_color = vec4(0.54, 0.33, 0.38, 1.0);   // couleur de l'air (couches)
+uniform float voile_k = 0.0;      // part de cette couleur mêlée à la couche
 
 varying vec2 world;
 varying vec4 vcol;
@@ -36,6 +38,7 @@ void vertex() {
 void fragment() {
 	vec4 c = COLOR;   // déjà texture × modulate
 	if (!unie && flou > 0.0) c = textureLod(TEXTURE, UV, flou) * vcol;
+	if (!unie) c.rgb = mix(c.rgb, voile_c.rgb, voile_k);
 	float along = vertical ? UV.y : UV.x;
 	float across = vertical ? UV.x : UV.y;
 	if (!unie) {

@@ -435,7 +435,7 @@ func _build_fonds(zone: Dictionary, salle: Dictionary, main: Dictionary) -> void
 	for a in amb_map:
 		used[a] = true
 	if ambs.has(ciel):
-		_add_fond(ambs[ciel], null, false)
+		_add_fond(_avec_couches(ambs[ciel], ciel, salle), null, false)
 	var interieur := _interieur(salle, ciel)
 	for a in used:
 		if a == ciel:
@@ -443,7 +443,18 @@ func _build_fonds(zone: Dictionary, salle: Dictionary, main: Dictionary) -> void
 		if not ambs.has(a):
 			push_warning("ambiance inconnue : %s (salle %s)" % [a, room.id])
 			continue
-		_add_fond(ambs[a], _mask_interieur(a, ciel, interieur, int(salle.get("fondu_cases", 3))), true)
+		_add_fond(_avec_couches(ambs[a], a, salle), _mask_interieur(a, ciel, interieur, int(salle.get("fondu_cases", 3))), true)
+
+
+## Une salle peut remplacer les couches d'une ambiance par les siennes (« couches » : {ambiance:
+## [couches]}), pour placer des éléments précis à l'endroit voulu (écran témoin).
+func _avec_couches(amb: Dictionary, nom: String, salle: Dictionary) -> Dictionary:
+	var c: Dictionary = salle.get("couches", {})
+	if not c.has(nom):
+		return amb
+	var a := amb.duplicate()
+	a["couches"] = c[nom]
+	return a
 
 
 func _add_fond(amb: Dictionary, mask: Texture2D, interieur: bool) -> void:
