@@ -132,17 +132,17 @@
 				{"elements": [{"image": "couches/e3b_arche.png", "x": 36, "hauteur": 5.5}, {"image": "couches/e3a_treteau.png", "x": 52, "hauteur": 6.5}, {"image": "couches/e3c_terril.png", "x": 66, "hauteur": 7}, {"image": "couches/e3d_grue.png", "x": 82, "hauteur": 8}, {"image": "couches/e3b_arche.png", "x": 96, "hauteur": 5.5, "miroir": true}, {"image": "couches/e3a_treteau.png", "x": 108, "hauteur": 6.5, "miroir": true}], "parallaxe": 0.6, "flou": 0.4, "voile": 0.6, "teinte": "ombre", "sol": 19.6, "brume": 1.2, "repere": [68, 14]}
 			],
 				"abri": [
-					{"image": "couches/e4a_planches.jpg", "parallaxe": 0.85, "flou": 0.6, "voile": 0.45, "teinte": "ombre", "hauteur": 10, "sol": 19.5, "repere": [28, 16]},
+					{"image": "couches/e4a_planches.jpg", "monte": true, "parallaxe": 0.85, "flou": 0.6, "voile": 0.45, "teinte": "ombre", "hauteur": 10, "sol": 19.5, "repere": [28, 16]},
 					{"image": "couches/e4b_muret.png", "parallaxe": 0.92, "flou": 0.3, "voile": 0.3, "teinte": "ombre", "hauteur": 2.2, "sol": 19.6, "enfonce": 0.3, "repere": [28, 16]},
 					{"image": "couches/e4c_charpente.png", "parallaxe": 0.96, "flou": 0.15, "voile": 0.2, "teinte": "ombre", "hauteur": 5.5, "sol": 19.7, "enfonce": 0.4, "miroir": false, "repere": [28, 16]}
 				],
 				"tunnel": [
-					{"image": "couches/ct1_paroi.jpg", "parallaxe": 0.85, "flou": 0.6, "voile": 0.4, "teinte": "ombre", "hauteur": 8, "sol": 19.5, "repere": [46, 17]},
+					{"image": "couches/ct1_paroi.jpg", "monte": true, "parallaxe": 0.85, "flou": 0.6, "voile": 0.4, "teinte": "ombre", "hauteur": 8, "sol": 19.5, "repere": [46, 17]},
 					{"elements": [{"image": "couches/ct2_etais.png", "x": 38, "hauteur": 2.8}, {"image": "couches/ct2_etais.png", "x": 47, "hauteur": 2.6, "miroir": true}, {"image": "couches/ct2_etais.png", "x": 55, "hauteur": 2.8}], "parallaxe": 0.92, "flou": 0.2, "voile": 0.12, "teinte": "ombre", "sol": 19.4, "repere": [46, 17]},
 					{"elements": [{"image": "couches/ct3_eboulis.png", "x": 41, "hauteur": 1.4}, {"image": "couches/ct3_eboulis.png", "x": 52, "hauteur": 1.2, "miroir": true}], "parallaxe": 0.96, "flou": 0.15, "voile": 0.3, "teinte": "ombre", "sol": 19.6, "repere": [46, 17]}
 				],
 				"galerie": [
-					{"image": "couches/cg1_paroi.jpg", "parallaxe": 0.85, "flou": 0.6, "voile": 0.45, "teinte": "ombre", "hauteur": 9, "sol": 19.5, "repere": [8, 17]},
+					{"image": "couches/cg1_paroi.jpg", "monte": true, "parallaxe": 0.85, "flou": 0.6, "voile": 0.45, "teinte": "ombre", "hauteur": 9, "sol": 19.5, "repere": [8, 17]},
 					{"elements": [{"image": "couches/cg2_arcade.png", "x": 4, "hauteur": 6}, {"image": "couches/cg2_arcade.png", "x": 12, "hauteur": 6, "miroir": true}], "parallaxe": 0.92, "flou": 0.3, "voile": 0.35, "teinte": "ombre", "sol": 19.4, "enfonce": 0.3, "repere": [8, 17]},
 					{"elements": [{"image": "couches/cg3_bricabrac.png", "x": 8, "hauteur": 1.6}], "parallaxe": 0.96, "flou": 0.15, "voile": 0.25, "teinte": "ombre", "sol": 19.6, "repere": [8, 17]}
 				]},

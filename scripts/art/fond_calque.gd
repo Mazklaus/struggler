@@ -35,7 +35,7 @@ func setup(r: Room, zone_dir: String, amb: Dictionary, mask: Texture2D, interieu
 		_bg.z_index = zb
 		_bg.material = _mat()
 		add_child(_bg)
-	if amb.has("fond_modules"):
+	if amb.has("fond_modules") and not amb.has("couches"):
 		_build_modules(amb.fond_modules)
 	if amb.has("couches"):
 		_build_couches(amb.couches, zb)
@@ -109,20 +109,27 @@ func _build_couches(list: Array, zb: int) -> void:
 			var hpx := float(d.get("hauteur", 10.0)) * T
 			var k := hpx / tex.get_height()
 			var wpx := tex.get_width() * k
-			var x := -1400.0
-			var i := 0
-			while x < room.size.x + 1400.0:
-				var sp := Sprite2D.new()
-				sp.texture = tex
-				sp.centered = false
-				sp.scale = Vector2(k, k)
-				# une fois sur deux en miroir : la répétition se voit moins
-				sp.flip_h = i % 2 == 1 and bool(d.get("miroir", true))
-				sp.position = Vector2(x, sol + float(d.get("enfonce", 0.0)) * T - hpx)
-				sp.material = mat
-				node.add_child(sp)
-				x += wpx - 1.0
-				i += 1
+			# « monte » : la paroi se répète aussi vers le haut jusqu'au plafond de la salle (mur
+			# d'intérieur), sinon une seule rangée posée sur le sol.
+			var y0 := sol + float(d.get("enfonce", 0.0)) * T - hpx
+			var rows := 1
+			if bool(d.get("monte", false)):
+				rows = int(ceil((y0 + 800.0) / (hpx - 1.0))) + 1
+			for r in rows:
+				var x := -1400.0 + fmod(float(r) * wpx * 0.37, wpx)
+				var i := r
+				while x < room.size.x + 1400.0:
+					var sp := Sprite2D.new()
+					sp.texture = tex
+					sp.centered = false
+					sp.scale = Vector2(k, k)
+					# une fois sur deux en miroir : la répétition se voit moins
+					sp.flip_h = i % 2 == 1 and bool(d.get("miroir", true))
+					sp.position = Vector2(x - wpx, y0 - float(r) * (hpx - 1.0))
+					sp.material = mat
+					node.add_child(sp)
+					x += wpx - 1.0
+					i += 1
 		for e in d.get("elements", []):
 			var tex: Texture2D = load(dir + str(e.image))
 			var hpx := float(e.get("hauteur", 8.0)) * T
